@@ -12,9 +12,9 @@ description = "Vendor-agnostic OpenTelemetry tracing library for Python web fram
 authors = ["Your Name <your.email@example.com>"]
 license = "MIT"
 readme = "README.md"
-homepage = "https://github.com/yourusername/otel-web-tracing"
-repository = "https://github.com/yourusername/otel-web-tracing"
-documentation = "https://github.com/yourusername/otel-web-tracing#readme"
+homepage = "https://github.com/rgunkar/otel-web-tracing"
+repository = "https://github.com/rgunkar/otel-web-tracing"
+documentation = "https://github.com/rgunkar/otel-web-tracing#readme"
 keywords = ["opentelemetry", "tracing", "observability", "flask", "django", "fastapi"]
 classifiers = [
     "Development Status :: 4 - Beta",

@@ -83,10 +83,10 @@ build = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/otel-tracer"
-Repository = "https://github.com/yourusername/otel-tracer"
-Documentation = "https://github.com/yourusername/otel-tracer#readme"
-"Bug Tracker" = "https://github.com/yourusername/otel-tracer/issues"
+Homepage = "https://github.com/rgunkar/otel-tracer"
+Repository = "https://github.com/rgunkar/otel-tracer"
+Documentation = "https://github.com/rgunkar/otel-tracer#readme"
+"Bug Tracker" = "https://github.com/rgunkar/otel-tracer/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -149,9 +149,9 @@ addopts = "--cov=otel_tracer --cov-report=term-missing"
 # authors = ["Your Name <your.email@example.com>"]
 # license = "MIT"
 # readme = "README.md"
-# homepage = "https://github.com/yourusername/otel-web-tracing"
-# repository = "https://github.com/yourusername/otel-web-tracing"
-# documentation = "https://github.com/yourusername/otel-web-tracing#readme"
+# homepage = "https://github.com/rgunkar/otel-web-tracing"
+# repository = "https://github.com/rgunkar/otel-web-tracing"
+# documentation = "https://github.com/rgunkar/otel-web-tracing#readme"
 # keywords = ["opentelemetry", "tracing", "observability", "flask", "django", "fastapi"]
 # classifiers = [
 #     "Development Status :: 4 - Beta",
