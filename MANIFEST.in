@@ -1,0 +1,42 @@
+# MANIFEST.in - Controls what files are included in the source distribution
+
+# Include essential project files
+include README.md
+include LICENSE
+include pyproject.toml
+
+# Include source code only
+recursive-include src *.py
+recursive-include src *.typed
+
+# Exclude everything else
+recursive-exclude tests *
+recursive-exclude examples *
+recursive-exclude docs *
+recursive-exclude .github *
+recursive-exclude scripts *
+
+# Exclude development and build files
+exclude Makefile
+exclude docker-compose.yml
+exclude otel-collector-config.yaml
+exclude prometheus.yml
+exclude .gitignore
+exclude .flake8
+exclude tox.ini
+
+# Exclude any generated files
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude *.pyd
+global-exclude __pycache__
+global-exclude *.egg-info
+global-exclude .DS_Store
+global-exclude .coverage
+global-exclude htmlcov
+
+# Exclude any IDE files
+global-exclude .vscode
+global-exclude .idea
+global-exclude *.swp
+global-exclude *.swo 
