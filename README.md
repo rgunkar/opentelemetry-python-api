@@ -310,9 +310,9 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 🆘 Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/otel-web-tracing/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/otel-web-tracing/discussions)
-- **Documentation**: [Full Documentation](https://yourusername.github.io/otel-web-tracing/)
+- **Issues**: [GitHub Issues](https://github.com/rgunkar/otel-web-tracing/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/rgunkar/otel-web-tracing/discussions)
+- **Documentation**: [Full Documentation](https://rgunkar.github.io/otel-web-tracing/)
 
 ## 🌟 Acknowledgments
 
