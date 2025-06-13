@@ -1,0 +1,214 @@
+# Standard build system (default)
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+# Alternative: Poetry build system (uncomment to use Poetry)
+# [build-system]
+# requires = ["poetry-core>=1.0.0"]
+# build-backend = "poetry.core.masonry.api"
+
+[project]
+name = "otel-web-tracing"
+version = "0.1.0"
+description = "Vendor-agnostic OpenTelemetry tracing library for Python web frameworks"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Your Name", email = "your.email@example.com"},
+]
+keywords = ["opentelemetry", "tracing", "observability", "flask", "django", "fastapi"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Monitoring",
+]
+
+dependencies = [
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+    "opentelemetry-instrumentation>=0.41b0",
+    "opentelemetry-exporter-jaeger>=1.20.0",
+    "opentelemetry-exporter-otlp>=1.20.0",
+    "opentelemetry-instrumentation-requests>=0.41b0",
+    "opentelemetry-instrumentation-urllib3>=0.41b0",
+    "opentelemetry-instrumentation-psycopg2>=0.41b0",
+    "opentelemetry-instrumentation-redis>=0.41b0",
+    "opentelemetry-instrumentation-sqlalchemy>=0.41b0",
+    "opentelemetry-instrumentation-pymongo>=0.41b0",
+]
+
+[project.optional-dependencies]
+flask = [
+    "opentelemetry-instrumentation-flask>=0.41b0",
+    "flask>=1.0.0",
+]
+django = [
+    "opentelemetry-instrumentation-django>=0.41b0",
+    "django>=2.2",
+]
+fastapi = [
+    "opentelemetry-instrumentation-fastapi>=0.41b0",
+    "fastapi>=0.60.0",
+]
+all = [
+    "opentelemetry-instrumentation-flask>=0.41b0",
+    "opentelemetry-instrumentation-django>=0.41b0",
+    "opentelemetry-instrumentation-fastapi>=0.41b0",
+    "flask>=1.0.0",
+    "django>=2.2",
+    "fastapi>=0.60.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=22.0.0",
+    "flake8>=5.0.0",
+    "mypy>=1.0.0",
+]
+build = [
+    "build>=1.0.0",
+    "twine>=4.0.0",
+    "setuptools>=68.0.0",
+    "wheel>=0.41.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/otel-tracer"
+Repository = "https://github.com/yourusername/otel-tracer"
+Documentation = "https://github.com/yourusername/otel-tracer#readme"
+"Bug Tracker" = "https://github.com/yourusername/otel-tracer/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+exclude = ["tests*", "examples*", "docs*"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+# Explicitly exclude files/folders from distribution
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+otel_tracer = ["py.typed"]
+
+# Exclude development and example files from the wheel
+[tool.setuptools.exclude-package-data]
+"*" = [
+    "tests/*",
+    "examples/*", 
+    "docs/*",
+    "*.md",
+    ".github/*",
+    "docker-compose.yml",
+    "otel-collector-config.yaml",
+    "prometheus.yml",
+    ".gitignore",
+    ".flake8",
+    "tox.ini",
+    "Makefile"
+]
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "--cov=otel_tracer --cov-report=term-missing"
+
+# ========================================
+# POETRY CONFIGURATION (Alternative)
+# ========================================
+# To use Poetry instead of setuptools, uncomment the sections below
+# and comment out the [build-system] and [project] sections above
+
+# [tool.poetry]
+# name = "otel-web-tracing"
+# version = "0.1.0"
+# description = "Vendor-agnostic OpenTelemetry tracing library for Python web frameworks"
+# authors = ["Your Name <your.email@example.com>"]
+# license = "MIT"
+# readme = "README.md"
+# homepage = "https://github.com/yourusername/otel-web-tracing"
+# repository = "https://github.com/yourusername/otel-web-tracing"
+# documentation = "https://github.com/yourusername/otel-web-tracing#readme"
+# keywords = ["opentelemetry", "tracing", "observability", "flask", "django", "fastapi"]
+# classifiers = [
+#     "Development Status :: 4 - Beta",
+#     "Intended Audience :: Developers",
+#     "License :: OSI Approved :: MIT License",
+#     "Programming Language :: Python :: 3",
+#     "Programming Language :: Python :: 3.8",
+#     "Programming Language :: Python :: 3.9",
+#     "Programming Language :: Python :: 3.10",
+#     "Programming Language :: Python :: 3.11",
+#     "Programming Language :: Python :: 3.12",
+#     "Topic :: Software Development :: Libraries :: Python Modules",
+#     "Topic :: System :: Monitoring",
+# ]
+# packages = [{include = "otel_tracer", from = "src"}]
+# include = ["src/otel_tracer/py.typed"]
+# exclude = ["tests", "examples", "docs", ".github"]
+
+# [tool.poetry.dependencies]
+# python = "^3.8"
+# opentelemetry-api = "^1.20.0"
+# opentelemetry-sdk = "^1.20.0"
+# opentelemetry-instrumentation = "^0.41b0"
+# opentelemetry-exporter-jaeger = "^1.20.0"
+# opentelemetry-exporter-otlp = "^1.20.0"
+# opentelemetry-instrumentation-requests = "^0.41b0"
+# opentelemetry-instrumentation-urllib3 = "^0.41b0"
+# opentelemetry-instrumentation-psycopg2 = "^0.41b0"
+# opentelemetry-instrumentation-redis = "^0.41b0"
+# opentelemetry-instrumentation-sqlalchemy = "^0.41b0"
+# opentelemetry-instrumentation-pymongo = "^0.41b0"
+
+# # Optional dependencies
+# opentelemetry-instrumentation-flask = {version = "^0.41b0", optional = true}
+# flask = {version = "^1.0.0", optional = true}
+# opentelemetry-instrumentation-django = {version = "^0.41b0", optional = true}
+# django = {version = "^2.2", optional = true}
+# opentelemetry-instrumentation-fastapi = {version = "^0.41b0", optional = true}
+# fastapi = {version = "^0.60.0", optional = true}
+
+# [tool.poetry.extras]
+# flask = ["opentelemetry-instrumentation-flask", "flask"]
+# django = ["opentelemetry-instrumentation-django", "django"]
+# fastapi = ["opentelemetry-instrumentation-fastapi", "fastapi"]
+# all = [
+#     "opentelemetry-instrumentation-flask", "flask",
+#     "opentelemetry-instrumentation-django", "django",
+#     "opentelemetry-instrumentation-fastapi", "fastapi"
+# ]
+
+# [tool.poetry.group.dev.dependencies]
+# pytest = "^7.0.0"
+# pytest-cov = "^4.0.0"
+# black = "^22.0.0"
+# flake8 = "^5.0.0"
+# mypy = "^1.0.0"
+
+# [tool.poetry.group.build.dependencies]
+# build = "^1.0.0"
+# twine = "^4.0.0"

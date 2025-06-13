@@ -1,0 +1,152 @@
+# OpenTelemetry Collector Configuration
+# This configuration demonstrates how to collect traces and metrics
+# and export them to various backends (Jaeger, Prometheus, etc.)
+
+receivers:
+  # OTLP Receiver (supports both gRPC and HTTP)
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins:
+            - "http://*"
+            - "https://*"
+
+  # Prometheus Receiver (for self-monitoring)
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: 'otel-collector'
+          scrape_interval: 10s
+          static_configs:
+            - targets: ['0.0.0.0:8888']
+
+processors:
+  # Batch processor - batches spans/metrics for better performance
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+    send_batch_max_size: 2048
+
+  # Memory limiter - prevents OOM
+  memory_limiter:
+    limit_mib: 128
+
+  # Resource processor - adds additional resource attributes
+  resource:
+    attributes:
+      - key: collector.version
+        value: "0.89.0"
+        action: insert
+      - key: environment
+        value: "docker"
+        action: insert
+
+  # Attributes processor - modify span attributes
+  attributes:
+    actions:
+      - key: http.user_agent
+        action: delete
+      - key: service.namespace
+        value: "otel-examples"
+        action: upsert
+
+exporters:
+  # Jaeger Exporter
+  jaeger:
+    endpoint: jaeger:14250
+    tls:
+      insecure: true
+
+  # OTLP Exporters (for forwarding to other collectors or vendors)
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+
+  # Prometheus Exporter
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    namespace: otel
+    const_labels:
+      environment: docker
+
+  # Logging Exporter (for debugging)
+  logging:
+    loglevel: info
+
+  # File Exporter (for debugging/backup)
+  file:
+    path: /tmp/otel-traces.json
+
+  # Example vendor exporters (commented out - configure as needed)
+  
+  # # Datadog Exporter
+  # datadog:
+  #   api:
+  #     key: "${DD_API_KEY}"
+  #     site: "datadoghq.com"
+  
+  # # New Relic Exporter  
+  # otlp/newrelic:
+  #   endpoint: https://otlp.nr-data.net:4317
+  #   headers:
+  #     api-key: "${NEW_RELIC_LICENSE_KEY}"
+  
+  # # Dynatrace Exporter
+  # otlp/dynatrace:
+  #   endpoint: "${DYNATRACE_ENDPOINT}/api/v2/otlp"
+  #   headers:
+  #     Authorization: "Api-Token ${DYNATRACE_TOKEN}"
+  
+  # # Honeycomb Exporter
+  # otlp/honeycomb:
+  #   endpoint: "https://api.honeycomb.io"
+  #   headers:
+  #     "x-honeycomb-team": "${HONEYCOMB_API_KEY}"
+  #     "x-honeycomb-dataset": "${HONEYCOMB_DATASET}"
+
+extensions:
+  # Health check extension
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+  # Performance profiler
+  pprof:
+    endpoint: 0.0.0.0:1777
+
+  # zPages extension (for debugging)
+  zpages:
+    endpoint: 0.0.0.0:55679
+
+service:
+  extensions: [health_check, pprof, zpages]
+  
+  pipelines:
+    # Traces Pipeline
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, attributes, batch]
+      exporters: [jaeger, logging]
+
+    # Metrics Pipeline
+    metrics:
+      receivers: [otlp, prometheus]
+      processors: [memory_limiter, resource, batch]
+      exporters: [prometheus, logging]
+
+    # Logs Pipeline (if needed)
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [logging]
+
+  # Telemetry configuration
+  telemetry:
+    logs:
+      level: "info"
+    metrics:
+      address: 0.0.0.0:8888 
