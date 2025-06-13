@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from threading import Lock
 
 from opentelemetry import trace
+from opentelemetry.trace import get_tracer_provider
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.resources import Resource, SERVICE_NAME, SERVICE_VERSION
@@ -80,6 +81,25 @@ def _parse_resource_attributes(attrs_str: str) -> Optional[Dict[str, str]]:
     return attributes
 
 
+def is_tracer_already_initialized() -> bool:
+    """
+    Check if OpenTelemetry tracer is already initialized by external code.
+    
+    This function checks if a TracerProvider is already set up in the system,
+    which could indicate that another library or application code has already
+    configured OpenTelemetry tracing.
+    
+    Returns:
+        bool: True if a TracerProvider is already initialized, False otherwise.
+    """
+    try:
+        tracer_provider = get_tracer_provider()
+        return isinstance(tracer_provider, TracerProvider)
+    except Exception as e:
+        logger.debug(f"Error checking tracer provider: {e}")
+        return False
+
+
 def setup_tracing(config: Optional[TracingConfig] = None, force_reinit: bool = False) -> trace.Tracer:
     """
     Set up OpenTelemetry tracing with idempotent initialization.
@@ -93,18 +113,36 @@ def setup_tracing(config: Optional[TracingConfig] = None, force_reinit: bool = F
 
     Raises:
         ValueError: If configuration is invalid.
+        RuntimeError: If OpenTelemetry is already initialized by external code.
     """
     global _tracer_initialized
 
     with _tracer_lock:
+        # Check if our library has already initialized tracing
         if _tracer_initialized and not force_reinit:
-            logger.info("Tracing already initialized, returning existing tracer")
+            logger.info("Tracing already initialized by this library, returning existing tracer")
+            return trace.get_tracer(__name__)
+
+        # Check if OpenTelemetry is already initialized by external code
+        if is_tracer_already_initialized() and not force_reinit:
+            logger.warning(
+                "OpenTelemetry TracerProvider is already initialized by external code. "
+                "This may cause conflicts. Use force_reinit=True to override, or ensure "
+                "only one tracing setup is used in your application."
+            )
+            # Return a tracer from the existing provider instead of failing
             return trace.get_tracer(__name__)
 
         if config is None:
             config = TracingConfig.from_env()
 
-        logger.info(f"Initializing tracing for service: {config.service_name}")
+        if is_tracer_already_initialized() and force_reinit:
+            logger.warning(
+                f"Force re-initializing tracing for service: {config.service_name}. "
+                "This will override existing OpenTelemetry configuration."
+            )
+        else:
+            logger.info(f"Initializing tracing for service: {config.service_name}")
 
         # Create resource with service information
         resource_attributes = {

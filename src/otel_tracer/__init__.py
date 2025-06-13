@@ -6,7 +6,7 @@ across different Python web frameworks (Flask, Django, FastAPI) with support for
 multiple observability backends.
 """
 
-from .tracer import TracingConfig, setup_tracing, is_initialized, reset_tracing
+from .tracer import TracingConfig, setup_tracing, is_initialized, reset_tracing, is_tracer_already_initialized
 from .exporters import ExporterType, create_exporter, VendorConfigs
 from .database import setup_database_tracing
 
@@ -27,6 +27,7 @@ __all__ = [
     "TracingConfig",
     "setup_tracing",
     "is_initialized", 
+    "is_tracer_already_initialized",
     "reset_tracing",
     "ExporterType",
     "create_exporter",

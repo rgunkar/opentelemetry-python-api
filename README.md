@@ -254,7 +254,199 @@ pytest --cov=otel_web_tracing --cov-report=html
 pytest tests/test_tracer.py -v
 ```
 
-## 🏗️ Architecture
+## 🏗️ Architecture & Design Patterns
+
+### 🎯 **Singleton Pattern Explained (For Beginners)**
+
+This project uses the **Singleton Pattern** - a design pattern that ensures only **one instance** of a class exists throughout your application. Think of it like having only one "master control center" for tracing.
+
+#### **Why Use Singleton Pattern?**
+
+**Problem without Singleton**:
+```python
+# ❌ BAD: Multiple tracer instances
+tracer1 = setup_flask_tracing(app, service_name="my-app")
+tracer2 = setup_flask_tracing(app, service_name="my-app")  # Creates another instance!
+tracer3 = setup_flask_tracing(app, service_name="my-app")  # And another!
+
+# Result: Multiple tracers sending duplicate data, wasting resources
+```
+
+**Solution with Singleton**:
+```python
+# ✅ GOOD: Same tracer instance reused
+tracer1 = setup_flask_tracing(app, service_name="my-app")
+tracer2 = setup_flask_tracing(app, service_name="my-app")  # Returns same instance
+tracer3 = setup_flask_tracing(app, service_name="my-app")  # Returns same instance
+
+print(tracer1 is tracer2 is tracer3)  # True - same object!
+```
+
+#### **How Our Singleton Works**
+
+**1. Thread-Safe Implementation**:
+```python
+import threading
+
+class OTelTracer:
+    _instance = None
+    _lock = threading.Lock()  # Prevents race conditions
+    
+    def __new__(cls):
+        if cls._instance is None:
+            with cls._lock:  # Only one thread can create instance
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
+        return cls._instance
+```
+
+**2. Idempotent Setup** (Safe to call multiple times):
+```python
+# You can call this as many times as you want
+setup_flask_tracing(app, service_name="my-app")
+setup_flask_tracing(app, service_name="my-app")  # No problem!
+setup_flask_tracing(app, service_name="my-app")  # Still fine!
+
+# Only the first call actually sets up tracing
+# Subsequent calls return the existing tracer
+```
+
+#### **Real-World Example**
+
+```python
+from flask import Flask
+from otel_web_tracing import setup_flask_tracing
+
+app = Flask(__name__)
+
+# First call - creates the tracer
+tracer1 = setup_flask_tracing(app, service_name="my-app")
+print(f"Tracer 1 ID: {id(tracer1)}")
+
+# Second call - returns the SAME tracer
+tracer2 = setup_flask_tracing(app, service_name="my-app")
+print(f"Tracer 2 ID: {id(tracer2)}")
+
+# Third call - still the SAME tracer
+tracer3 = setup_flask_tracing(app, service_name="my-app")
+print(f"Tracer 3 ID: {id(tracer3)}")
+
+# Output:
+# Tracer 1 ID: 140234567890123
+# Tracer 2 ID: 140234567890123  # Same ID!
+# Tracer 3 ID: 140234567890123  # Same ID!
+```
+
+#### **Benefits in Our Project**
+
+1. **🚫 No Duplicate Traces**: Only one tracer sends data
+2. **💾 Memory Efficient**: One instance instead of many
+3. **🔧 Easy Configuration**: Set once, use everywhere
+4. **🧵 Thread Safe**: Works in multi-threaded applications
+5. **🔄 Idempotent**: Safe to call setup multiple times
+
+#### **When Singleton is Reset**
+
+The singleton instance is reset when:
+```python
+# During testing (automatic cleanup)
+pytest tests/  # Each test gets a fresh tracer
+
+# Manual reset (advanced usage)
+from otel_web_tracing.tracer import OTelTracer
+OTelTracer._instance = None  # Reset singleton
+```
+
+#### **Conflict Detection & Resolution**
+
+**Problem**: What if another library already set up OpenTelemetry?
+
+```python
+# ❌ POTENTIAL CONFLICT: Another library sets up OpenTelemetry
+import some_other_library
+some_other_library.setup_tracing()  # Sets up OpenTelemetry
+
+# Now our library tries to set up tracing
+from otel_tracer import setup_flask_tracing
+tracer = setup_flask_tracing(app, service_name="my-app")  # What happens?
+```
+
+**Solution**: Our library detects existing setup and handles it gracefully:
+
+```python
+from otel_tracer import setup_flask_tracing, is_tracer_already_initialized
+
+# Check if OpenTelemetry is already set up
+if is_tracer_already_initialized():
+    print("OpenTelemetry already initialized by external code")
+
+# Set up tracing (safe even if already initialized)
+tracer = setup_flask_tracing(app, service_name="my-app")
+# ✅ Works! Uses existing tracer or creates new one as needed
+```
+
+**Force Override** (when you need your specific configuration):
+```python
+# Force override existing setup
+tracer = setup_flask_tracing(
+    app, 
+    service_name="my-app",
+    exporter_type="jaeger",
+    force_reinit=True  # Override existing setup
+)
+```
+
+#### **Common Beginner Questions**
+
+**Q: What if I want different tracers for different services?**
+```python
+# ✅ Use different service names
+tracer1 = setup_flask_tracing(app1, service_name="user-service")
+tracer2 = setup_flask_tracing(app2, service_name="order-service")
+# Same tracer instance, but different service names in traces
+```
+
+**Q: Is this thread-safe?**
+```python
+# ✅ Yes! Multiple threads can safely call setup
+import threading
+
+def setup_tracing():
+    setup_flask_tracing(app, service_name="my-app")
+
+# All threads will get the same tracer instance
+threads = [threading.Thread(target=setup_tracing) for _ in range(10)]
+for t in threads:
+    t.start()
+```
+
+**Q: What happens in tests?**
+```python
+# ✅ Automatic cleanup between tests
+def test_tracing_1():
+    tracer = setup_flask_tracing(app, service_name="test-1")
+    # Test code here
+
+def test_tracing_2():
+    tracer = setup_flask_tracing(app, service_name="test-2")
+    # Gets a fresh tracer instance (singleton reset between tests)
+```
+
+**Q: What if another library already set up OpenTelemetry?**
+```python
+# ✅ Library detects and handles gracefully
+from otel_tracer import is_tracer_already_initialized
+
+# Check first
+if is_tracer_already_initialized():
+    print("Already set up by external code")
+
+# Set up anyway (safe)
+tracer = setup_flask_tracing(app, service_name="my-app")
+
+# Force your configuration if needed
+tracer = setup_flask_tracing(app, service_name="my-app", force_reinit=True)
+```
 
 ### Core Components
 
