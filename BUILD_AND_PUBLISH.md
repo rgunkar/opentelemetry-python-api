@@ -1,6 +1,6 @@
 # Building and Publishing otel-web-tracing
 
-This guide explains how to build and publish the `otel-web-tracing` library to PyPI using either standard Python tools or Poetry.
+This guide explains how to build and publish the `otel-web-tracing` library to PyPI.
 
 ## 🎯 What Gets Published
 
@@ -23,7 +23,6 @@ The package is configured to include **only the core library code**:
 
 ## 🛠️ Prerequisites
 
-### Standard Build (Default)
 1. **Install build dependencies:**
    ```bash
    pip install -e .[build]
@@ -31,30 +30,20 @@ The package is configured to include **only the core library code**:
    pip install build twine setuptools wheel
    ```
 
-### Poetry Build (Alternative)
-1. **Install Poetry:**
-   ```bash
-   curl -sSL https://install.python-poetry.org | python3 -
-   # or
-   pip install poetry
-   ```
+### Using Poetry (Optional)
+If you prefer Poetry for dependency management:
+```bash
+# Install Poetry
+curl -sSL https://install.python-poetry.org | python3 -
+# or
+pip install poetry
 
-2. **To use Poetry, choose one of these options:**
-   
-   **Option A (Recommended):** Use the dedicated Poetry configuration:
-   ```bash
-   # Copy the Poetry-specific configuration
-   cp pyproject.poetry.toml pyproject.toml
-   ```
-   
-   **Option B:** Manually edit `pyproject.toml`:
-   - Comment out the `[build-system]` and `[project]` sections
-   - Uncomment the `[tool.poetry]` sections
+# Install dependencies
+poetry install
 
-3. **Initialize Poetry project:**
-   ```bash
-   poetry install
-   ```
+# Build with Poetry
+poetry build
+```
 
 2. **Configure PyPI credentials:**
    ```bash
@@ -120,7 +109,7 @@ python scripts/build.py publish-test
 python scripts/build.py publish
 ```
 
-### Method 3: Manual Commands (Standard Build)
+### Method 3: Manual Commands
 
 ```bash
 # Clean previous builds
@@ -139,15 +128,10 @@ python -m twine upload --repository testpypi dist/*
 python -m twine upload dist/*
 ```
 
-### Method 4: Using Poetry
+### Method 4: Using Poetry (Optional)
 
 ```bash
-# Build package (auto-detects Poetry configuration)
-make build
-# or force Poetry build
-make build-poetry
-
-# Using Poetry directly
+# Build with Poetry
 poetry build
 
 # Check package
@@ -159,13 +143,6 @@ poetry publish --repository testpypi
 # Publish to PyPI
 poetry publish
 ```
-
-**Poetry advantages:**
-- Dependency resolution and lock files
-- Virtual environment management
-- Simplified dependency management
-- Modern Python packaging standards
-- Built-in publish command
 
 ## 🔍 Validation
 
@@ -253,30 +230,7 @@ To create a release:
 3. Create GitHub release from the tag
 4. CI will automatically publish to PyPI
 
-## 🎭 Poetry vs Standard Build Comparison
 
-| Feature | Standard Build | Poetry |
-|---------|----------------|--------|
-| Configuration | `pyproject.toml` (PEP 621) | `pyproject.toml` (Poetry format) |
-| Dependency management | pip/requirements.txt | poetry.lock |
-| Virtual environments | Manual (venv/virtualenv) | Built-in (`poetry shell`) |
-| Build command | `python -m build` | `poetry build` |
-| Publish command | `twine upload` | `poetry publish` |
-| Dependency resolution | pip resolver | Poetry resolver |
-| Lock files | No | Yes (poetry.lock) |
-| Ease of use | Moderate | High |
-| Industry adoption | Widespread | Growing |
-
-**Choose Poetry if you want:**
-- Modern dependency management
-- Automatic virtual environment handling
-- Deterministic builds with lock files
-- Simplified workflow
-
-**Choose Standard Build if you:**
-- Prefer traditional Python tooling
-- Need maximum compatibility
-- Want minimal dependencies
 
 ## 🆘 Troubleshooting
 

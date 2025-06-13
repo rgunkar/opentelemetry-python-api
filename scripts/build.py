@@ -65,13 +65,11 @@ def build():
     print("📦 Building package...")
     clean()
     
-    # Check if Poetry is available and configured
-    if is_poetry_project():
-        print("🎭 Detected Poetry configuration, using Poetry build")
-        poetry_build()
-    else:
-        print("📦 Using standard build (setuptools)")
-        standard_build()
+    # Ensure we have build dependencies
+    run_command("pip install build twine setuptools wheel")
+    
+    # Build the package
+    run_command("python -m build")
     
     print("✅ Build complete")
     
@@ -81,38 +79,6 @@ def build():
         print("📁 Built files:")
         for file in dist_dir.iterdir():
             print(f"  {file.name} ({file.stat().st_size} bytes)")
-
-def is_poetry_project():
-    """Check if this is a Poetry project."""
-    # Check if poetry.lock exists or pyproject.toml contains [tool.poetry]
-    poetry_lock_exists = Path('poetry.lock').exists()
-    
-    pyproject_path = Path('pyproject.toml')
-    if pyproject_path.exists():
-        content = pyproject_path.read_text()
-        # Check if uncommented [tool.poetry] section exists
-        return '[tool.poetry]' in content and not content.startswith('#', content.find('[tool.poetry]'))
-    
-    return poetry_lock_exists
-
-def poetry_build():
-    """Build using Poetry."""
-    # Check if Poetry is installed
-    result = run_command("poetry --version", check=False)
-    if result.returncode != 0:
-        print("❌ Poetry not found. Installing Poetry...")
-        run_command("pip install poetry")
-    
-    # Build with Poetry
-    run_command("poetry build")
-
-def standard_build():
-    """Build using standard tools."""
-    # Ensure we have build dependencies
-    run_command("pip install build twine setuptools wheel")
-    
-    # Build the package
-    run_command("python -m build")
 
 def check():
     """Check the built package."""
@@ -245,8 +211,7 @@ def main():
     """Main function."""
     parser = argparse.ArgumentParser(description="Build and publish otel-web-tracing")
     parser.add_argument('command', choices=[
-        'clean', 'build', 'build-poetry', 'build-standard',
-        'check', 'show-contents', 'publish-test', 
+        'clean', 'build', 'check', 'show-contents', 'publish-test', 
         'publish', 'validate', 'setup-pypi'
     ], help='Command to run')
     
@@ -259,12 +224,6 @@ def main():
         clean()
     elif args.command == 'build':
         build()
-    elif args.command == 'build-poetry':
-        clean()
-        poetry_build()
-    elif args.command == 'build-standard':
-        clean()
-        standard_build()
     elif args.command == 'check':
         check()
     elif args.command == 'show-contents':

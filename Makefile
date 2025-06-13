@@ -9,9 +9,7 @@ help:
 	@echo "=============================================="
 	@echo ""
 	@echo "📦 Building:"
-	@echo "  build         - Build the package (auto-detects Poetry vs standard)"
-	@echo "  build-poetry  - Build with Poetry (force)"
-	@echo "  build-standard- Build with standard tools (force)"
+	@echo "  build         - Build the package (wheel and sdist)"
 	@echo "  check         - Check the built package"
 	@echo "  clean         - Clean build artifacts"
 	@echo ""
@@ -42,33 +40,11 @@ clean:
 	find . -type f -name "*.pyc" -delete
 	@echo "✅ Clean complete"
 
-# Build the package (auto-detects Poetry vs standard build)
+# Build the package
 build: clean
 	@echo "📦 Building package..."
-	@if [ -f "poetry.lock" ] || grep -q "^\[tool\.poetry\]" pyproject.toml 2>/dev/null; then \
-		echo "🎭 Using Poetry build"; \
-		poetry build; \
-	else \
-		echo "📦 Using standard build"; \
-		python -m build; \
-	fi
-	@echo "✅ Build complete"
-	@echo "📁 Built files:"
-	@ls -la dist/
-
-# Build with Poetry (force)
-build-poetry: clean
-	@echo "🎭 Building with Poetry..."
-	poetry build
-	@echo "✅ Poetry build complete"
-	@echo "📁 Built files:"
-	@ls -la dist/
-
-# Build with standard tools (force)
-build-standard: clean
-	@echo "📦 Building with standard tools..."
 	python -m build
-	@echo "✅ Standard build complete"
+	@echo "✅ Build complete"
 	@echo "📁 Built files:"
 	@ls -la dist/
 
