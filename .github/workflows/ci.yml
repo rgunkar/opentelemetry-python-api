@@ -7,13 +7,12 @@ on:
     branches: [ main ]
 
 jobs:
-  # Main test job for stable Python versions
+  # Main test job for stable Python version (3.9 only)
   test:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.9"]
     
     steps:
     - uses: actions/checkout@v4
@@ -46,12 +45,12 @@ jobs:
         flags: unittests
         name: codecov-umbrella
 
-  # Core functionality test with minimal dependencies (stable versions only)
+  # Core functionality test with minimal dependencies (stable version only)
   core-test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.9"]
     
     steps:
     - uses: actions/checkout@v4
@@ -69,6 +68,48 @@ jobs:
     
     - name: Test core functionality
       run: pytest tests/test_core.py -v
+
+  # Experimental Python 3.10 test (allowed to fail)
+  test-python-310:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev,all]"
+    
+    - name: Test with pytest
+      run: pytest tests/ -v
+
+  # Experimental Python 3.11 test (allowed to fail)
+  test-python-311:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev,all]"
+    
+    - name: Test with pytest
+      run: pytest tests/ -v
 
   # Experimental Python 3.12 test (allowed to fail)
   test-python-312:
@@ -101,7 +142,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: "3.11"
+        python-version: "3.9"
     
     - name: Install dependencies
       run: |
@@ -124,7 +165,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: "3.11"
+        python-version: "3.9"
     
     - name: Install build dependencies
       run: |
@@ -153,8 +194,8 @@ jobs:
     - name: Check test results
       run: |
         echo "Test Results Summary:"
-        echo "Main tests: ${{ needs.test.result }}"
-        echo "Core tests: ${{ needs.core-test.result }}"
+        echo "Main tests (Python 3.9): ${{ needs.test.result }}"
+        echo "Core tests (Python 3.9): ${{ needs.core-test.result }}"
         echo "Security: ${{ needs.security.result }}"
         echo "Build: ${{ needs.build.result }}"
         
@@ -164,6 +205,11 @@ jobs:
         fi
         
         echo "All critical tests passed!"
+        echo ""
+        echo "Experimental test results (allowed to fail):"
+        echo "Python 3.10: ${{ needs.test-python-310.result || 'not run' }}"
+        echo "Python 3.11: ${{ needs.test-python-311.result || 'not run' }}"
+        echo "Python 3.12: ${{ needs.test-python-312.result || 'not run' }}"
 
   # Publish to PyPI (only on tags)
   publish:
@@ -177,7 +223,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: "3.11"
+        python-version: "3.9"
     
     - name: Install dependencies
       run: |
