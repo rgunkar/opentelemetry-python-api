@@ -123,7 +123,7 @@ def add_fastapi_middleware(
     """
     try:
         from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-        from opentelemetry.instrumentation.starlette import StarletteInstrumentor
+        from opentelemetry.instrumentation.starlette import StarletteInstrumentor  # type: ignore[import]
     except ImportError:
         raise ImportError(
             "FastAPI/Starlette instrumentation not available. "
@@ -198,3 +198,13 @@ def reset_fastapi_instrumentation() -> None:
     """Reset FastAPI instrumentation state (mainly for testing)."""
     global _fastapi_instrumented
     _fastapi_instrumented = False
+
+
+def _instrument_fastapi_app(app: Any, config: TracingConfig, **kwargs: Any) -> None:
+    # ... existing code ...
+    pass  # Add your implementation here
+
+
+def _setup_fastapi_tracing(app: Any, config: TracingConfig, **kwargs: Any) -> None:
+    # ... existing code ...
+    pass  # Add your implementation here

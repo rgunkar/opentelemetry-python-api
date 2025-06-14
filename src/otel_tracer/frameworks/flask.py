@@ -3,7 +3,7 @@ Flask framework instrumentation module.
 """
 
 import logging
-from typing import Optional, Any
+from typing import Optional, Any, Callable
 
 from ..tracer import TracingConfig, setup_tracing
 
@@ -12,18 +12,22 @@ from ..tracer import TracingConfig, setup_tracing
 try:
     from opentelemetry.instrumentation.flask import FlaskInstrumentor
 except ImportError:
-    FlaskInstrumentor = None
+    FlaskInstrumentor = None  # type: ignore[assignment]
 
 # Import setup_database_tracing at module level for testing purposes
 try:
     from ..database import setup_database_tracing
 except ImportError:
-    setup_database_tracing = None
+    setup_database_tracing = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
 # Global flag to prevent double instrumentation
 _flask_instrumented = False
+
+# Add type annotations for these at the top
+FlaskInstrumentor: Optional[type] = FlaskInstrumentor
+setup_database_tracing: Optional[Callable[..., None]] = setup_database_tracing
 
 
 def instrument_flask(

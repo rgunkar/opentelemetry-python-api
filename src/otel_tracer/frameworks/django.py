@@ -73,7 +73,7 @@ def setup_django_tracing(
         # Try to get service name from Django settings
         if service_name is None:
             try:
-                from django.conf import settings
+                from django.conf import settings  # type: ignore[import]
                 service_name = getattr(settings, 'OTEL_SERVICE_NAME', None)
             except ImportError:
                 pass
