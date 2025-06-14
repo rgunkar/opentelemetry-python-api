@@ -94,7 +94,9 @@ def is_tracer_already_initialized() -> bool:
     """
     try:
         tracer_provider = get_tracer_provider()
-        return isinstance(tracer_provider, TracerProvider)
+        # Check for both TracerProvider and ProxyTracerProvider
+        from opentelemetry.trace import ProxyTracerProvider
+        return isinstance(tracer_provider, (TracerProvider, ProxyTracerProvider))
     except Exception as e:
         logger.debug(f"Error checking tracer provider: {e}")
         return False
@@ -130,6 +132,8 @@ def setup_tracing(config: Optional[TracingConfig] = None, force_reinit: bool = F
                 "This may cause conflicts. Use force_reinit=True to override, or ensure "
                 "only one tracing setup is used in your application."
             )
+            # Mark as initialized since we're using the existing provider
+            _tracer_initialized = True
             # Return a tracer from the existing provider instead of failing
             return trace.get_tracer(__name__)
 
@@ -227,3 +231,11 @@ def reset_tracing() -> None:
     global _tracer_initialized
     with _tracer_lock:
         _tracer_initialized = False
+        
+        # Reset OpenTelemetry state for better test isolation
+        try:
+            # Create a new NoOpTracerProvider to reset the global state
+            from opentelemetry.trace import NoOpTracerProvider
+            trace.set_tracer_provider(NoOpTracerProvider())
+        except Exception as e:
+            logger.debug(f"Error resetting tracer provider: {e}")

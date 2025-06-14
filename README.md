@@ -180,7 +180,7 @@ docker run -d --name jaeger \
 ### Using Docker Compose
 ```yaml
 # docker-compose.yml
-version: '3.8'
+version: '3.9'
 services:
   jaeger:
     image: jaegertracing/all-in-one:latest
@@ -253,6 +253,131 @@ pytest --cov=otel_web_tracing --cov-report=html
 # Run specific test file
 pytest tests/test_tracer.py -v
 ```
+
+## 🧑‍💻 Type Checking (for Beginners)
+
+### How We Use Type Checking in This Project
+
+- **Type Hints Everywhere:**  
+  All core modules (`src/otel_tracer/`) use Python type hints for function arguments, return values, and class attributes. This makes the code easier to read, maintain, and catch bugs early.
+
+- **Checked with `mypy`:**  
+  We use [mypy](https://mypy.readthedocs.io/en/stable/) in CI and recommend running it locally. It checks that the code matches the declared types and helps prevent subtle bugs.
+
+- **Type-Checked Libraries:**
+  - **Standard Library:** Uses Python's built-in `typing` module (e.g., `Optional`, `Dict`, `Any`, `Union`).
+  - **Third-Party:**
+    - OpenTelemetry SDK and instrumentations provide their own type hints.
+    - If a third-party library lacks type hints, we use `# type: ignore` as needed (rarely).
+  - **No runtime enforcement:** Type hints are for static analysis only; they don't affect runtime behavior.
+
+- **Type Checking in CI:**  
+  Our CI pipeline runs `mypy src` and fails if there are type errors. This ensures all merged code is type-safe.
+
+- **Type Checking in Tests:**  
+  You can also run `mypy tests` to check type safety in the test suite, though the main focus is on the library code.
+
+- **Type Checking for Contributors:**
+  - If you add new code, please include type hints for all public functions and classes.
+  - If you see a `# type: ignore`, check if it's still needed—sometimes upstream libraries add type hints later.
+
+#### Example from This Codebase
+
+```python
+from typing import Optional, Dict, Any, Union
+
+def create_exporter(
+    exporter_type: Union[ExporterType, str],
+    endpoint: Optional[str] = None,
+    headers: Optional[Dict[str, str]] = None,
+    **kwargs: Any,
+) -> SpanExporter:
+    ...
+```
+- All arguments and the return value are type-annotated.
+- This function is checked by `mypy` in CI and locally.
+
+#### Libraries Used for Type Checking
+
+- **[mypy](https://mypy.readthedocs.io/en/stable/):** Static type checker for Python.
+- **[typing](https://docs.python.org/3/library/typing.html):** Standard library for type hints.
+- **[types-](https://pypi.org/search/?q=types-):** Some dependencies may use stub packages (e.g., `types-requests`) for type hints if the main package doesn't provide them.
+
+#### How to Run Type Checking
+
+```bash
+# Check the main codebase
+mypy src
+
+# (Optional) Check the tests
+mypy tests
+```
+
+**If you're new to type hints or mypy, see the rest of this section for more details and resources!**
+
+---
+
+### 🛠️ Common mypy Issues & How We Handle Them
+
+This project uses optional dependencies and dynamic imports, so you may see mypy errors like these:
+
+| Error | Solution |
+|-------|----------|
+| Assigning `None` to a type | Use `Optional[...]` in the annotation |
+| Assigning `None` to a `Callable` | Use `Optional[Callable[...]]` |
+| Missing stubs for imports | Add `# type: ignore[import]` or set `ignore_missing_imports = True` |
+| Missing function annotations | Add type hints to all function arguments and return values |
+| Django/Starlette missing stubs | Use `# type: ignore[import]` or `ignore_missing_imports = True` |
+
+#### Practical Examples
+
+**1. Optional Imports:**
+```python
+from typing import Optional
+
+try:
+    from opentelemetry.instrumentation.flask import FlaskInstrumentor
+except ImportError:
+    FlaskInstrumentor = None  # type: ignore[assignment]
+
+FlaskInstrumentor: Optional[type] = FlaskInstrumentor
+```
+
+**2. Optional Callable:**
+```python
+from typing import Optional, Callable
+
+try:
+    from ..database import setup_database_tracing
+except ImportError:
+    setup_database_tracing = None  # type: ignore[assignment]
+
+setup_database_tracing: Optional[Callable[..., None]] = setup_database_tracing
+```
+
+**3. Missing Stubs for Imports:**
+```python
+from opentelemetry.instrumentation.starlette import StarletteInstrumentor  # type: ignore[import]
+from django.conf import settings  # type: ignore[import]
+```
+
+**4. Missing Function Annotations:**
+```python
+def my_function(arg: int) -> str:
+    return str(arg)
+
+def setup_tracing(config: TracingConfig, force_reinit: bool = False) -> None:
+    ...
+```
+
+**5. Configuring mypy to Ignore Missing Imports (if needed):**
+Add to your `mypy.ini` or `pyproject.toml`:
+```ini
+[mypy]
+ignore_missing_imports = True
+```
+
+---
 
 ## 🏗️ Architecture & Design Patterns
 
@@ -492,7 +617,7 @@ Our project uses **GitHub Actions** for automated testing, building, and publish
 ```mermaid
 graph TD
     A[Push Code] --> B[Test All Python Versions]
-    A --> C[Core Tests 3.8-3.11]
+    A --> C[Core Tests 3.9-3.11]
     A --> D[Python 3.12 Experimental]
     
     C --> E[Integration Tests]
@@ -513,7 +638,7 @@ graph TD
 ### 🧪 **Test Jobs Explained**
 
 #### 1. **Main Test Job** (`test`)
-**Purpose**: Tests all Python versions (3.8, 3.9, 3.10, 3.11, 3.12)
+**Purpose**: Tests all Python versions (3.9, 3.10, 3.11, 3.12)
 
 **What happens**:
 ```bash
@@ -535,7 +660,7 @@ pytest --cov=otel_tracer --cov-report=xml -v
 - Uploads coverage reports to Codecov for tracking
 
 #### 2. **Core Test Job** (`core-test`)
-**Purpose**: Tests stable Python versions (3.8-3.11) that deployment depends on
+**Purpose**: Tests stable Python versions (3.9-3.11) that deployment depends on
 
 **Why separate**: Python 3.12 issues won't block your releases
 
@@ -945,7 +1070,7 @@ This setup gives you a **production-like observability environment** on your loc
 
 ## 📋 Requirements
 
-- Python 3.8+
+- Python 3.9+
 - OpenTelemetry SDK 1.20.0+
 - Framework-specific dependencies (installed with extras)
 - Docker & Docker Compose (for development environment)
