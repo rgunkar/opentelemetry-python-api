@@ -8,6 +8,31 @@ from typing import Optional, Dict, Any, Union
 
 from opentelemetry.sdk.trace.export import SpanExporter, ConsoleSpanExporter
 
+# Import exporters at module level for testing purposes
+# These will be None if dependencies are not installed
+try:
+    from opentelemetry.exporter.jaeger.thrift import JaegerExporter
+except ImportError:
+    JaegerExporter = None
+
+try:
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as OTLPHTTPSpanExporter
+except ImportError:
+    OTLPHTTPSpanExporter = None
+
+try:
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter as OTLPGRPCSpanExporter
+except ImportError:
+    OTLPGRPCSpanExporter = None
+
+try:
+    from opentelemetry.sdk.trace.export import MultiSpanExporter
+except ImportError:
+    MultiSpanExporter = None
+
+# For backward compatibility, expose the HTTP version as OTLPSpanExporter
+OTLPSpanExporter = OTLPHTTPSpanExporter
+
 logger = logging.getLogger(__name__)
 
 
@@ -53,7 +78,7 @@ def create_exporter(
         return _create_console_exporter(**kwargs)
 
     elif exporter_type == ExporterType.JAEGER:
-        return _create_jaeger_exporter(endpoint, **kwargs)
+        return _create_jaeger_exporter(endpoint, headers, **kwargs)
 
     elif exporter_type in (ExporterType.OTLP, ExporterType.OTLP_HTTP):
         return _create_otlp_http_exporter(endpoint, headers, **kwargs)
@@ -74,11 +99,13 @@ def _create_console_exporter(**kwargs: Any) -> SpanExporter:
     return ConsoleSpanExporter()
 
 
-def _create_jaeger_exporter(endpoint: Optional[str] = None, **kwargs: Any) -> SpanExporter:
+def _create_jaeger_exporter(
+        endpoint: Optional[str] = None, 
+        headers: Optional[Dict[str, str]] = None,
+        **kwargs: Any
+) -> SpanExporter:
     """Create a Jaeger exporter."""
-    try:
-        from opentelemetry.exporter.jaeger.thrift import JaegerExporter
-    except ImportError:
+    if JaegerExporter is None:
         raise ImportError(
             "Jaeger exporter dependencies not installed. "
             "Install with: pip install opentelemetry-exporter-jaeger"
@@ -95,7 +122,10 @@ def _create_jaeger_exporter(endpoint: Optional[str] = None, **kwargs: Any) -> Sp
             # HTTP endpoint format
             collector_endpoint = endpoint
             logger.info(f"Creating Jaeger HTTP exporter with endpoint: {collector_endpoint}")
-            return JaegerExporter(collector_endpoint=collector_endpoint)
+            exporter_kwargs = {"collector_endpoint": collector_endpoint}
+            if headers:
+                exporter_kwargs.update(kwargs)  # Add any additional headers/auth
+            return JaegerExporter(**exporter_kwargs)
         else:
             # Assume host:port format
             parts = endpoint.split(":")
@@ -116,9 +146,7 @@ def _create_otlp_http_exporter(
         **kwargs: Any,
 ) -> SpanExporter:
     """Create an OTLP HTTP exporter."""
-    try:
-        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-    except ImportError:
+    if OTLPHTTPSpanExporter is None:
         raise ImportError(
             "OTLP HTTP exporter dependencies not installed. "
             "Install with: pip install opentelemetry-exporter-otlp-proto-http"
@@ -137,7 +165,7 @@ def _create_otlp_http_exporter(
     # Add any additional kwargs
     exporter_kwargs.update(kwargs)
 
-    return OTLPSpanExporter(**exporter_kwargs)
+    return OTLPHTTPSpanExporter(**exporter_kwargs)
 
 
 def _create_otlp_grpc_exporter(
@@ -146,9 +174,7 @@ def _create_otlp_grpc_exporter(
         **kwargs: Any,
 ) -> SpanExporter:
     """Create an OTLP gRPC exporter."""
-    try:
-        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-    except ImportError:
+    if OTLPGRPCSpanExporter is None:
         raise ImportError(
             "OTLP gRPC exporter dependencies not installed. "
             "Install with: pip install opentelemetry-exporter-otlp-proto-grpc"
@@ -167,7 +193,7 @@ def _create_otlp_grpc_exporter(
     # Add any additional kwargs
     exporter_kwargs.update(kwargs)
 
-    return OTLPSpanExporter(**exporter_kwargs)
+    return OTLPGRPCSpanExporter(**exporter_kwargs)
 
 
 def _create_multi_exporter(
@@ -176,9 +202,7 @@ def _create_multi_exporter(
         **kwargs: Any,
 ) -> SpanExporter:
     """Create a multi-exporter that sends traces to multiple backends."""
-    try:
-        from opentelemetry.sdk.trace.export import MultiSpanExporter
-    except ImportError:
+    if MultiSpanExporter is None:
         raise ImportError("MultiSpanExporter not available in OpenTelemetry SDK")
 
     # Create default exporters: Jaeger + OTLP
@@ -186,7 +210,7 @@ def _create_multi_exporter(
     
     # Add Jaeger exporter
     try:
-        jaeger_exporter = _create_jaeger_exporter(**kwargs)
+        jaeger_exporter = _create_jaeger_exporter(endpoint=endpoint, headers=headers, **kwargs)
         exporters.append(jaeger_exporter)
         logger.info("Added Jaeger exporter to multi-exporter")
     except ImportError:
@@ -194,7 +218,7 @@ def _create_multi_exporter(
 
     # Add OTLP HTTP exporter
     try:
-        otlp_exporter = _create_otlp_http_exporter(endpoint, headers, **kwargs)
+        otlp_exporter = _create_otlp_http_exporter(endpoint=endpoint, headers=headers, **kwargs)
         exporters.append(otlp_exporter)
         logger.info("Added OTLP HTTP exporter to multi-exporter")
     except ImportError:
@@ -216,6 +240,8 @@ class VendorConfigs:
     @staticmethod
     def datadog(api_key: str, site: str = "datadoghq.com") -> Dict[str, Any]:
         """Configuration for Datadog."""
+        if not isinstance(api_key, str):
+            raise TypeError("Expected a string for API key")
         return {
             "exporter_type": ExporterType.OTLP_HTTP,
             "endpoint": f"https://trace-agent.{site}/v0.4/traces",
@@ -227,7 +253,7 @@ class VendorConfigs:
         """Configuration for Dynatrace."""
         return {
             "exporter_type": ExporterType.OTLP_HTTP,
-            "endpoint": f"{endpoint}/api/v2/otlp/v1/traces",
+            "endpoint": f"{endpoint}/v2/otlp",
             "headers": {"Authorization": f"Api-Token {token}"},
         }
 

@@ -98,13 +98,11 @@ class TestFlaskSetup:
             # Should only be called once due to idempotent behavior
             assert mock_instance.instrument_app.call_count == 1
 
-    @patch('otel_tracer.frameworks.flask.FlaskInstrumentor')
-    def test_flask_import_error(self, mock_instrumentor):
+    def test_flask_import_error(self):
         """Test handling of Flask instrumentation import error."""
-        mock_instrumentor.side_effect = ImportError("Flask not available")
-        
-        with pytest.raises(ImportError, match="Flask instrumentation not available"):
-            instrument_flask()
+        with patch('otel_tracer.frameworks.flask.FlaskInstrumentor', None):
+            with pytest.raises(ImportError, match="Flask instrumentation not available"):
+                instrument_flask()
 
     def test_setup_with_database_tracing_disabled(self, flask_app, sample_config):
         """Test Flask setup with database tracing disabled."""
@@ -147,7 +145,14 @@ class TestFlaskSetup:
             mock_instrumentor.return_value = mock_instance
             
             with patch('otel_tracer.frameworks.flask.TracingConfig') as mock_config:
-                mock_config.from_env.return_value = MagicMock()
+                # Create a real TracingConfig instance instead of a mock
+                from otel_tracer.tracer import TracingConfig
+                from otel_tracer.exporters import ExporterType
+                real_config = TracingConfig(
+                    service_name='my-test-app',
+                    exporter_type=ExporterType.CONSOLE
+                )
+                mock_config.from_env.return_value = real_config
                 
                 setup_flask_tracing(flask_app)
                 

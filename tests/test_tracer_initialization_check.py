@@ -34,12 +34,11 @@ class TestTracerInitializationCheck:
 
     def test_is_tracer_already_initialized_with_sdk_provider(self):
         """Test detection when SDK TracerProvider is already set."""
-        # Set up a TracerProvider manually
+        # Mock get_tracer_provider to return a TracerProvider instead of trying to set one
         provider = TracerProvider()
-        trace.set_tracer_provider(provider)
-        
-        result = is_tracer_already_initialized()
-        assert result is True
+        with patch('otel_tracer.tracer.get_tracer_provider', return_value=provider):
+            result = is_tracer_already_initialized()
+            assert result is True
 
     def test_is_tracer_already_initialized_with_custom_provider(self):
         """Test detection with a custom (non-SDK) tracer provider."""

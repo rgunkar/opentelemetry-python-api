@@ -81,7 +81,7 @@ class TestCreateExporter:
             with pytest.raises(ImportError, match="Jaeger exporter dependencies not installed"):
                 create_exporter(ExporterType.JAEGER)
 
-    @patch('otel_tracer.exporters.OTLPSpanExporter')
+    @patch('otel_tracer.exporters.OTLPHTTPSpanExporter')
     def test_otlp_http_exporter_default(self, mock_otlp):
         """Test OTLP HTTP exporter with default settings."""
         mock_instance = MagicMock()
@@ -94,7 +94,7 @@ class TestCreateExporter:
             endpoint="http://localhost:4318/v1/traces"
         )
 
-    @patch('otel_tracer.exporters.OTLPSpanExporter')
+    @patch('otel_tracer.exporters.OTLPHTTPSpanExporter')
     def test_otlp_http_exporter_with_config(self, mock_otlp):
         """Test OTLP HTTP exporter with custom configuration."""
         mock_instance = MagicMock()
@@ -117,20 +117,17 @@ class TestCreateExporter:
 
     def test_otlp_http_import_error(self):
         """Test OTLP HTTP exporter import error handling."""
-        with patch.dict('sys.modules', {
-            'opentelemetry.exporter.otlp.proto.http.trace_exporter': None
-        }):
+        with patch('otel_tracer.exporters.OTLPHTTPSpanExporter', None):
             with pytest.raises(ImportError, match="OTLP HTTP exporter dependencies not installed"):
                 create_exporter(ExporterType.OTLP_HTTP)
 
-    @patch('otel_tracer.exporters.OTLPSpanExporter')
+    @patch('otel_tracer.exporters.OTLPGRPCSpanExporter')
     def test_otlp_grpc_exporter_default(self, mock_otlp):
         """Test OTLP gRPC exporter with default settings."""
         mock_instance = MagicMock()
         mock_otlp.return_value = mock_instance
 
-        with patch('otel_tracer.exporters.OTLPSpanExporter', mock_otlp):
-            exporter = create_exporter(ExporterType.OTLP_GRPC)
+        exporter = create_exporter(ExporterType.OTLP_GRPC)
 
         assert exporter == mock_instance
         mock_otlp.assert_called_once_with(

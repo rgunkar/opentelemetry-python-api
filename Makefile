@@ -1,17 +1,17 @@
 # Makefile for otel-web-tracing library
 # Build and publish commands for PyPI
 
-.PHONY: help install install-dev test test-all lint format type-check clean build publish publish-test docker-up docker-down
+.PHONY: help install install-dev test test-all lint format type-check clean build publish publish-test docker-up docker-down poetry-install poetry-lock
 
 # Default target
-help:
+help: ## Show this help message
 	@echo 'Usage: make [target]'
 	@echo ''
 	@echo 'Targets:'
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 # Clean build artifacts
-clean:
+clean: ## Clean build artifacts
 	@echo "🧹 Cleaning build artifacts..."
 	rm -rf build/
 	rm -rf dist/
@@ -22,77 +22,79 @@ clean:
 	@echo "✅ Clean complete"
 
 # Build the package
-build: clean
+build: poetry-install ## Build package
 	@echo "📦 Building package..."
-	python -m build
+	poetry build
 	@echo "✅ Build complete"
 	@echo "📁 Built files:"
 	@ls -la dist/
 
 # Check the built package
-check: lint type-check test
+check: lint type-check test ## Run all checks (lint, type-check, test)
 	@echo "✅ Package check passed"
 
 # Publish to TestPyPI (for testing)
-publish-test: check
+publish-test: build ## Publish to TestPyPI
 	@echo "📤 Publishing to TestPyPI..."
 	@echo "⚠️  Make sure you have TestPyPI credentials configured!"
-	python -m twine upload --repository testpypi dist/*
+	poetry config repositories.testpypi https://test.pypi.org/legacy/
+	poetry publish --repository testpypi
 	@echo "✅ Published to TestPyPI"
 	@echo "🔗 Check: https://test.pypi.org/project/otel-web-tracing/"
 
 # Publish to PyPI (production)
-publish: check
+publish: build ## Publish to PyPI
 	@echo "📤 Publishing to PyPI..."
 	@echo "⚠️  This will publish to PRODUCTION PyPI!"
 	@read -p "Are you sure? Type 'yes' to continue: " confirm && [ "$$confirm" = "yes" ]
-	python -m twine upload dist/*
+	poetry publish
 	@echo "✅ Published to PyPI"
 	@echo "🔗 Check: https://pypi.org/project/otel-web-tracing/"
 
 # Install package in development mode
-install:
+install: poetry-install ## Install package in development mode
 	@echo "🛠️  Installing package in development mode..."
-	pip install -e .
+	poetry install
 	@echo "✅ Installation complete"
 
 # Install with development dependencies
-install-dev:
+install-dev: poetry-install ## Install package with development dependencies
 	@echo "🛠️  Installing with development dependencies..."
-	pip install -e ".[dev,all]"
+	poetry install --extras "dev all"
 	@echo "✅ Development installation complete"
 
 # Run tests
-test:
-	@echo "🧪 Running tests..."
-	pytest tests/ -v --cov=otel_tracer --cov-report=term-missing
-	@echo "✅ Tests complete"
+test: ## Run tests
+	poetry run pytest tests/ -v --cov=otel_tracer --cov-report=term-missing
+
+test-simple: ## Run tests without coverage
+	poetry run pytest tests/ -v
 
 # Run tests on all supported Python versions (requires Python 3.9+)
-test-all:
+test-all: ## Run tests on all supported Python versions (requires Python 3.9+)
 	@echo "Testing on Python 3.9..."
-	@python3.9 -m pytest tests/ -v || echo "Python 3.9 tests failed"
+	@poetry env use python3.9 && poetry run pytest tests/ -v || echo "Python 3.9 tests failed"
 	@echo "Testing on Python 3.10..."
-	@python3.10 -m pytest tests/ -v || echo "Python 3.10 tests failed"
+	@poetry env use python3.10 && poetry run pytest tests/ -v || echo "Python 3.10 tests failed"
 	@echo "Testing on Python 3.11..."
-	@python3.11 -m pytest tests/ -v || echo "Python 3.11 tests failed"
+	@poetry env use python3.11 && poetry run pytest tests/ -v || echo "Python 3.11 tests failed"
 
 # Run linting
-lint:
+lint: ## Run linting
 	@echo "🔍 Running linting..."
-	flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
-	flake8 src/ tests/ --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
+	poetry run flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
+	poetry run flake8 src/ tests/ --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
 
 # Format code
-format:
+format: ## Format code with black
 	@echo "🎨 Formatting code..."
-	black src/ tests/ --target-version py39
+	poetry run black src/ tests/ --target-version py39
 	@echo "✅ Formatting complete"
 
 # Run type checking
-type-check:
+type-check: ## Run type checking
 	@echo "🔍 Running type checking..."
-	mypy src/
+	poetry run mypy src/
 	@echo "✅ Type checking complete"
 
 # Show package contents (what will be published)
@@ -124,18 +126,42 @@ ci: check build
 	@echo "✅ CI pipeline complete"
 
 # Docker development environment targets
-docker-up:
+docker-up: ## Start development environment with Docker
 	@echo "🐳 Starting development environment with Docker..."
 	docker-compose up -d
 
-docker-down:
+docker-down: ## Stop development environment
 	@echo "🐳 Stopping development environment..."
 	docker-compose down
 
 # Development workflow targets
-dev-setup: install-dev
+dev-setup: install-dev poetry-lock ## Set up development environment
 	@echo "🚀 Development environment ready!"
 	@echo ""
 	@echo "Next steps:"
 	@echo "  make test     # Run tests"
-	@echo "  make docker-up  # Start observability stack" 
+	@echo "  make docker-up  # Start observability stack"
+
+# Poetry-specific commands
+poetry-install: ## Install Poetry (if not already installed)
+	@command -v poetry >/dev/null 2>&1 || { echo "Installing Poetry..."; curl -sSL https://install.python-poetry.org | python3 -; }
+	@echo "✅ Poetry is installed"
+
+poetry-lock: poetry-install ## Generate poetry.lock file
+	poetry lock
+	@echo "✅ poetry.lock generated"
+
+poetry-shell: ## Activate Poetry shell
+	poetry shell
+
+poetry-show: ## Show installed packages
+	poetry show
+
+poetry-update: ## Update dependencies
+	poetry update
+
+poetry-add: ## Add a new dependency (usage: make poetry-add PACKAGE=package-name)
+	poetry add $(PACKAGE)
+
+poetry-add-dev: ## Add a new dev dependency (usage: make poetry-add-dev PACKAGE=package-name)
+	poetry add --group dev $(PACKAGE) 

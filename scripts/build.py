@@ -1,23 +1,15 @@
 #!/usr/bin/env python3
 """
-Build and publish script for otel-web-tracing library.
+Build script for otel-web-tracing package.
 
-This script provides commands to build and publish the library to PyPI,
-ensuring only the core library code is included (no tests, examples, etc.).
-
-Usage:
-    python scripts/build.py build        # Build the package
-    python scripts/build.py check        # Check the package
-    python scripts/build.py publish-test # Publish to TestPyPI
-    python scripts/build.py publish      # Publish to PyPI
-    python scripts/build.py validate     # Full validation
+This script automates the build process with proper validation and cleanup.
+Uses Poetry for better dependency resolution and management.
 """
 
 import os
 import sys
-import shutil
 import subprocess
-import argparse
+import shutil
 from pathlib import Path
 from typing import List, Optional
 
@@ -84,38 +76,60 @@ def clean_build_artifacts() -> None:
     
     print("✅ Build artifacts cleaned")
 
-def detect_build_system() -> str:
-    """Detect which build system to use (pip or Poetry)."""
-    if Path("poetry.lock").exists():
-        return "poetry"
-    elif Path("pyproject.toml").exists():
-        return "pip"
-    else:
-        print("❌ No pyproject.toml found")
+def check_poetry_installed() -> bool:
+    """Check if Poetry is installed."""
+    try:
+        result = subprocess.run(["poetry", "--version"], 
+                              check=True, capture_output=True, text=True)
+        print(f"✅ Poetry found: {result.stdout.strip()}")
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
+
+def install_poetry() -> None:
+    """Install Poetry if not already installed."""
+    if check_poetry_installed():
+        return
+    
+    print("📦 Installing Poetry...")
+    try:
+        # Install Poetry using the official installer
+        result = subprocess.run([
+            "curl", "-sSL", "https://install.python-poetry.org", "|", "python3", "-"
+        ], shell=True, check=True, capture_output=True, text=True)
+        print("✅ Poetry installed successfully")
+    except subprocess.CalledProcessError:
+        print("❌ Failed to install Poetry automatically")
+        print("Please install Poetry manually: https://python-poetry.org/docs/#installation")
         sys.exit(1)
 
-def install_build_dependencies(build_system: str) -> None:
-    """Install build dependencies."""
-    if build_system == "poetry":
-        run_command(["poetry", "install", "--with", "build"], "Installing Poetry build dependencies")
-    else:
-        run_command([sys.executable, "-m", "pip", "install", "-e", ".[build]"], "Installing pip build dependencies")
+def detect_build_system() -> str:
+    """Detect which build system to use (always Poetry now)."""
+    if not Path("pyproject.toml").exists():
+        print("❌ No pyproject.toml found")
+        sys.exit(1)
+    return "poetry"
 
-def run_tests() -> None:
+def install_dependencies() -> None:
+    """Install dependencies using Poetry."""
+    print("📦 Installing dependencies with Poetry...")
+    run_command(["poetry", "install", "--extras", "dev all"], "Installing dependencies")
+
+def generate_lock_file() -> None:
+    """Generate poetry.lock file if it doesn't exist."""
+    if not Path("poetry.lock").exists():
+        print("🔒 Generating poetry.lock file...")
+        run_command(["poetry", "lock"], "Generating lock file")
+    else:
+        print("✅ poetry.lock file exists")
+
+def run_tests() -> bool:
     """Run the test suite."""
     print("🧪 Running tests...")
     
-    # Check if pytest is available
-    try:
-        subprocess.run([sys.executable, "-m", "pytest", "--version"], 
-                      check=True, capture_output=True)
-    except subprocess.CalledProcessError:
-        print("⚠️  pytest not found, installing...")
-        run_command([sys.executable, "-m", "pip", "install", "pytest"], "Installing pytest")
-    
     # Run tests
     result = run_command([
-        sys.executable, "-m", "pytest", 
+        "poetry", "run", "pytest", 
         "tests/", "-v", "--tb=short"
     ], "Running tests", check=False)
     
@@ -128,44 +142,37 @@ def run_linting() -> None:
     """Run code linting."""
     print("🔍 Running linting...")
     
-    # Check if flake8 is available
-    try:
-        subprocess.run([sys.executable, "-m", "flake8", "--version"], 
-                      check=True, capture_output=True)
-    except subprocess.CalledProcessError:
-        print("⚠️  flake8 not found, installing...")
-        run_command([sys.executable, "-m", "pip", "install", "flake8"], "Installing flake8")
-    
     # Run linting
     result = run_command([
-        sys.executable, "-m", "flake8", 
+        "poetry", "run", "flake8", 
         "src/", "tests/", "--count", "--statistics"
     ], "Running linting", check=False)
     
     if result.returncode != 0:
         print("⚠️  Linting issues found, but continuing with build...")
 
-def build_package(build_system: str) -> None:
-    """Build the package."""
-    if build_system == "poetry":
-        run_command(["poetry", "build"], "Building package with Poetry")
-    else:
-        run_command([sys.executable, "-m", "build"], "Building package with pip")
+def run_type_checking() -> None:
+    """Run type checking."""
+    print("🔍 Running type checking...")
+    
+    result = run_command([
+        "poetry", "run", "mypy", "src/"
+    ], "Running type checking", check=False)
+    
+    if result.returncode != 0:
+        print("⚠️  Type checking issues found, but continuing with build...")
+
+def build_package() -> None:
+    """Build the package using Poetry."""
+    print("📦 Building package with Poetry...")
+    run_command(["poetry", "build"], "Building package")
 
 def check_package() -> None:
     """Check the built package."""
     print("🔍 Checking built package...")
     
-    # Check if twine is available
-    try:
-        subprocess.run([sys.executable, "-m", "twine", "--version"], 
-                      check=True, capture_output=True)
-    except subprocess.CalledProcessError:
-        print("⚠️  twine not found, installing...")
-        run_command([sys.executable, "-m", "pip", "install", "twine"], "Installing twine")
-    
-    # Check package
-    run_command([sys.executable, "-m", "twine", "check", "dist/*"], "Checking package")
+    # Check package using Poetry
+    run_command(["poetry", "run", "twine", "check", "dist/*"], "Checking package")
 
 def show_package_info() -> None:
     """Show information about the built package."""
@@ -181,40 +188,65 @@ def show_package_info() -> None:
                 print(f"  {file.name}: {size_mb:.2f} MB")
     
     print("\n🎯 Next Steps:")
-    print("  • Test: python -m twine upload --repository testpypi dist/*")
-    print("  • Publish: python -m twine upload dist/*")
-    print("  • Or use: make publish-test / make publish")
+    print("  • Test: poetry publish --repository testpypi")
+    print("  • Publish: poetry publish")
+    print("  • Or use Makefile: make publish-test / make publish")
+    print("  • Generate lock: poetry lock")
+    print("  • Install deps: poetry install --extras 'dev all'")
+
+def show_poetry_info() -> None:
+    """Show Poetry environment information."""
+    print("\n🔧 Poetry Environment:")
+    print("=" * 30)
+    
+    # Show Poetry version
+    result = run_command(["poetry", "--version"], "Getting Poetry version", check=False)
+    
+    # Show virtual environment info
+    result = run_command(["poetry", "env", "info"], "Getting environment info", check=False)
+    
+    # Show installed packages
+    print("\n📦 Installed packages:")
+    result = run_command(["poetry", "show", "--tree"], "Showing dependency tree", check=False)
 
 def main() -> None:
     """Main build process."""
-    print("🚀 otel-web-tracing Build Script")
-    print("=" * 40)
+    print("🚀 otel-web-tracing Build Script (Poetry)")
+    print("=" * 45)
     
     # Check Python version
     check_python_version()
     
+    # Install Poetry if needed
+    install_poetry()
+    
     # Clean previous builds
     clean_build_artifacts()
     
-    # Detect build system
+    # Detect build system (always Poetry now)
     build_system = detect_build_system()
     print(f"📋 Using build system: {build_system}")
     
+    # Generate lock file if needed
+    generate_lock_file()
+    
     # Install dependencies
-    install_build_dependencies(build_system)
+    install_dependencies()
     
     # Run quality checks
     run_linting()
+    run_type_checking()
     tests_passed = run_tests()
     
     # Build package
-    build_package(build_system)
+    build_package()
     
     # Check package
     check_package()
     
     # Show results
     show_package_info()
+    show_poetry_info()
     
     if tests_passed:
         print("\n✅ Build completed successfully!")
@@ -223,6 +255,15 @@ def main() -> None:
     
     print(f"🐍 Built for Python {MIN_PYTHON_VERSION[0]}.{MIN_PYTHON_VERSION[1]}+")
     print(f"📋 Supported versions: {', '.join(SUPPORTED_PYTHON_VERSIONS)}")
+    print("🔧 Using Poetry for dependency management")
+    
+    print("\n💡 Quick Commands:")
+    print("  poetry lock                    # Generate/update lock file")
+    print("  poetry install                 # Install dependencies")
+    print("  poetry install --extras 'all' # Install with all extras")
+    print("  poetry run pytest             # Run tests")
+    print("  poetry build                   # Build package")
+    print("  poetry publish                 # Publish to PyPI")
 
 if __name__ == "__main__":
-    main() 
+    main()

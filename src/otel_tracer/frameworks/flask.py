@@ -7,6 +7,19 @@ from typing import Optional, Any
 
 from ..tracer import TracingConfig, setup_tracing
 
+# Import FlaskInstrumentor at module level for testing purposes
+# This will be None if dependencies are not installed
+try:
+    from opentelemetry.instrumentation.flask import FlaskInstrumentor
+except ImportError:
+    FlaskInstrumentor = None
+
+# Import setup_database_tracing at module level for testing purposes
+try:
+    from ..database import setup_database_tracing
+except ImportError:
+    setup_database_tracing = None
+
 logger = logging.getLogger(__name__)
 
 # Global flag to prevent double instrumentation
@@ -32,9 +45,7 @@ def instrument_flask(
         logger.info("Flask already instrumented, skipping")
         return
 
-    try:
-        from opentelemetry.instrumentation.flask import FlaskInstrumentor
-    except ImportError:
+    if FlaskInstrumentor is None:
         raise ImportError(
             "Flask instrumentation not available. "
             "Install with: pip install opentelemetry-instrumentation-flask"
@@ -88,12 +99,13 @@ def setup_flask_tracing(
 
     # Setup database tracing if enabled
     if enable_database_tracing:
-        from ..database import setup_database_tracing
         setup_database_tracing()
 
     # Configure excluded URLs
     if excluded_urls:
-        kwargs['excluded_urls'] = ','.join(excluded_urls)
+        # Strip leading slashes from URLs and join them
+        cleaned_urls = [url.lstrip('/') for url in excluded_urls]
+        kwargs['excluded_urls'] = ','.join(cleaned_urls)
     elif 'excluded_urls' not in kwargs:
         # Default excluded URLs for Flask
         kwargs['excluded_urls'] = 'health,metrics,favicon.ico'

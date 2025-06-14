@@ -86,7 +86,7 @@ Documentation = "https://github.com/rgunkar/otel-tracer#readme"
 name = "otel-web-tracing"
 version = "0.1.0"
 description = "Vendor-agnostic OpenTelemetry tracing library for Python web frameworks"
-authors = ["Your Name <your.email@example.com>"]
+authors = ["Rahul Gunkar <rgunkar@gmail.com>"]
 readme = "README.md"
 packages = [{include = "otel_tracer", from = "src"}]
 package-mode = true

@@ -7,10 +7,11 @@ on:
     branches: [ main ]
 
 jobs:
-  # Main test job for stable Python version (3.9 only)
+  # Main test job for stable Python version (3.9 only) - CRITICAL
   test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false  # Don't cancel this job if others fail
       matrix:
         python-version: ["3.9"]
     
@@ -22,21 +23,35 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+        installer-parallel: true
+    
+    - name: Load cached venv
+      id: cached-poetry-dependencies
+      uses: actions/cache@v3
+      with:
+        path: .venv
+        key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
+    
     - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e ".[dev,all]"
+      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+      run: poetry install --extras "dev all"
     
     - name: Lint with flake8
       run: |
-        flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 src/ tests/ --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
+        poetry run flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        poetry run flake8 src/ tests/ --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
     
     - name: Type check with mypy
-      run: mypy src/
+      run: poetry run mypy src/
     
     - name: Test with pytest
-      run: pytest tests/ -v --cov=otel_tracer --cov-report=xml
+      run: poetry run pytest tests/ -v --cov=otel_tracer --cov-report=xml
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
@@ -45,10 +60,11 @@ jobs:
         flags: unittests
         name: codecov-umbrella
 
-  # Core functionality test with minimal dependencies (stable version only)
+  # Core functionality test with minimal dependencies (stable version only) - CRITICAL
   core-test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false  # Don't cancel this job if others fail
       matrix:
         python-version: ["3.9"]
     
@@ -60,19 +76,97 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+        installer-parallel: true
+    
     - name: Install core dependencies only
       run: |
-        python -m pip install --upgrade pip
-        pip install -e .
-        pip install pytest
+        poetry install --only main
+        poetry add pytest --group dev
     
     - name: Test core functionality
-      run: pytest tests/test_core.py -v
+      run: poetry run pytest tests/test_core.py -v
 
-  # Experimental Python 3.10 test (allowed to fail)
+  # Security scan - CRITICAL
+  security:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false  # Don't cancel this job if others fail
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.9"
+    
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+        installer-parallel: true
+    
+    - name: Install security tools
+      run: |
+        poetry add bandit safety --group dev
+    
+    - name: Run security checks
+      run: |
+        poetry run bandit -r src/
+        poetry run safety check
+
+  # Build test - CRITICAL
+  build:
+    runs-on: ubuntu-latest
+    needs: [test, core-test]  # Only depend on critical Python 3.9 tests
+    strategy:
+      fail-fast: false  # Don't cancel this job if others fail
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.9"
+    
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+        installer-parallel: true
+    
+    - name: Install build dependencies
+      run: poetry install --with build
+    
+    - name: Build package
+      run: poetry build
+    
+    - name: Check package
+      run: poetry run twine check dist/*
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: dist
+        path: dist/
+
+  # Experimental Python 3.10 test (allowed to fail) - NON-CRITICAL
   test-python-310:
     runs-on: ubuntu-latest
     continue-on-error: true
+    strategy:
+      fail-fast: false  # Don't affect other jobs
     
     steps:
     - uses: actions/checkout@v4
@@ -82,18 +176,26 @@ jobs:
       with:
         python-version: "3.10"
     
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+        installer-parallel: true
+    
     - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e ".[dev,all]"
+      run: poetry install --extras "dev all"
     
     - name: Test with pytest
-      run: pytest tests/ -v
+      run: poetry run pytest tests/ -v
 
-  # Experimental Python 3.11 test (allowed to fail)
+  # Experimental Python 3.11 test (allowed to fail) - NON-CRITICAL
   test-python-311:
     runs-on: ubuntu-latest
     continue-on-error: true
+    strategy:
+      fail-fast: false  # Don't affect other jobs
     
     steps:
     - uses: actions/checkout@v4
@@ -103,18 +205,26 @@ jobs:
       with:
         python-version: "3.11"
     
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+        installer-parallel: true
+    
     - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e ".[dev,all]"
+      run: poetry install --extras "dev all"
     
     - name: Test with pytest
-      run: pytest tests/ -v
+      run: poetry run pytest tests/ -v
 
-  # Experimental Python 3.12 test (allowed to fail)
+  # Experimental Python 3.12 test (allowed to fail) - NON-CRITICAL
   test-python-312:
     runs-on: ubuntu-latest
     continue-on-error: true
+    strategy:
+      fail-fast: false  # Don't affect other jobs
     
     steps:
     - uses: actions/checkout@v4
@@ -124,97 +234,67 @@ jobs:
       with:
         python-version: "3.12"
     
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+        installer-parallel: true
+    
     - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e ".[dev,all]"
+      run: poetry install --extras "dev all"
     
     - name: Test with pytest
-      run: pytest tests/ -v
+      run: poetry run pytest tests/ -v
 
-  # Security scan
-  security:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.9"
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install bandit safety
-    
-    - name: Run security checks
-      run: |
-        bandit -r src/
-        safety check
-
-  # Build test
-  build:
-    runs-on: ubuntu-latest
-    needs: [test, core-test]  # Only depend on stable tests
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.9"
-    
-    - name: Install build dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install build twine
-    
-    - name: Build package
-      run: python -m build
-    
-    - name: Check package
-      run: twine check dist/*
-    
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: dist
-        path: dist/
-
-  # Test summary job
+  # Test summary job - Only depends on critical jobs
   test-summary:
     runs-on: ubuntu-latest
-    needs: [test, core-test, security, build]
-    if: always()
+    needs: [test, core-test, security, build]  # Only critical jobs
+    if: always()  # Run even if some jobs fail
     
     steps:
     - name: Check test results
       run: |
-        echo "Test Results Summary:"
+        echo "=== CRITICAL TEST RESULTS ==="
         echo "Main tests (Python 3.9): ${{ needs.test.result }}"
         echo "Core tests (Python 3.9): ${{ needs.core-test.result }}"
         echo "Security: ${{ needs.security.result }}"
         echo "Build: ${{ needs.build.result }}"
+        echo ""
         
-        if [[ "${{ needs.test.result }}" == "failure" || "${{ needs.core-test.result }}" == "failure" ]]; then
-          echo "Critical tests failed!"
+        # Check if any critical tests failed
+        if [[ "${{ needs.test.result }}" == "failure" || "${{ needs.core-test.result }}" == "failure" || "${{ needs.security.result }}" == "failure" || "${{ needs.build.result }}" == "failure" ]]; then
+          echo "❌ CRITICAL TESTS FAILED!"
+          echo "Pipeline will be marked as failed."
           exit 1
         fi
         
-        echo "All critical tests passed!"
+        echo "✅ ALL CRITICAL TESTS PASSED!"
         echo ""
-        echo "Experimental test results (allowed to fail):"
-        echo "Python 3.10: ${{ needs.test-python-310.result || 'not run' }}"
-        echo "Python 3.11: ${{ needs.test-python-311.result || 'not run' }}"
-        echo "Python 3.12: ${{ needs.test-python-312.result || 'not run' }}"
+        echo "=== EXPERIMENTAL TEST RESULTS (informational only) ==="
+        echo "These results don't affect the pipeline status:"
+        
+        # Get experimental results (these don't block the pipeline)
+        python3 << 'EOF'
+        import os
+        import json
+        
+        # Note: Experimental job results aren't available in needs since they're not dependencies
+        # This is intentional - they run independently and don't block the pipeline
+        print("Python 3.10: Running independently (check Actions tab for results)")
+        print("Python 3.11: Running independently (check Actions tab for results)")  
+        print("Python 3.12: Running independently (check Actions tab for results)")
+        print("")
+        print("💡 Experimental tests run in parallel but don't block deployment")
+        print("   Check the 'Actions' tab to see their individual results")
+        EOF
 
-  # Publish to PyPI (only on tags)
+  # Publish to PyPI (only on tags) - Only depends on critical jobs
   publish:
     runs-on: ubuntu-latest
-    needs: [test-summary]
+    needs: [test-summary]  # Only depends on critical job summary
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
     
     steps:
@@ -225,16 +305,21 @@ jobs:
       with:
         python-version: "3.9"
     
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install build twine
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+        installer-parallel: true
+    
+    - name: Install build dependencies
+      run: poetry install --with build
     
     - name: Build package
-      run: python -m build
+      run: poetry build
     
     - name: Publish to PyPI
       env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-      run: twine upload dist/* 
+        POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_API_TOKEN }}
+      run: poetry publish 
