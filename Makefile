@@ -1,33 +1,14 @@
 # Makefile for otel-web-tracing library
 # Build and publish commands for PyPI
 
-.PHONY: help clean build check publish publish-test install dev-install test lint format
+.PHONY: help install install-dev test test-all lint format type-check clean build publish publish-test docker-up docker-down
 
 # Default target
 help:
-	@echo "🚀 otel-web-tracing Build & Publish Commands"
-	@echo "=============================================="
-	@echo ""
-	@echo "📦 Building:"
-	@echo "  build         - Build the package (wheel and sdist)"
-	@echo "  check         - Check the built package"
-	@echo "  clean         - Clean build artifacts"
-	@echo ""
-	@echo "📤 Publishing:"
-	@echo "  publish-test  - Publish to TestPyPI (for testing)"
-	@echo "  publish       - Publish to PyPI (production)"
-	@echo ""
-	@echo "🛠️  Development:"
-	@echo "  install       - Install package in development mode"
-	@echo "  dev-install   - Install with all development dependencies"
-	@echo "  test          - Run tests"
-	@echo "  lint          - Run linting"
-	@echo "  format        - Format code with black"
-	@echo ""
-	@echo "🔧 Usage Examples:"
-	@echo "  make clean build check    # Build and verify package"
-	@echo "  make publish-test         # Test on TestPyPI first"
-	@echo "  make publish              # Publish to PyPI"
+	@echo 'Usage: make [target]'
+	@echo ''
+	@echo 'Targets:'
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 # Clean build artifacts
 clean:
@@ -49,9 +30,7 @@ build: clean
 	@ls -la dist/
 
 # Check the built package
-check: build
-	@echo "🔍 Checking package..."
-	python -m twine check dist/*
+check: lint type-check test
 	@echo "✅ Package check passed"
 
 # Publish to TestPyPI (for testing)
@@ -78,30 +57,43 @@ install:
 	@echo "✅ Installation complete"
 
 # Install with development dependencies
-dev-install:
+install-dev:
 	@echo "🛠️  Installing with development dependencies..."
-	pip install -e .[dev,build,all]
+	pip install -e ".[dev,all]"
 	@echo "✅ Development installation complete"
 
 # Run tests
 test:
 	@echo "🧪 Running tests..."
-	pytest --cov=otel_tracer --cov-report=term-missing -v
+	pytest tests/ -v --cov=otel_tracer --cov-report=term-missing
 	@echo "✅ Tests complete"
+
+# Run tests on all supported Python versions (requires Python 3.9+)
+test-all:
+	@echo "Testing on Python 3.9..."
+	@python3.9 -m pytest tests/ -v || echo "Python 3.9 tests failed"
+	@echo "Testing on Python 3.10..."
+	@python3.10 -m pytest tests/ -v || echo "Python 3.10 tests failed"
+	@echo "Testing on Python 3.11..."
+	@python3.11 -m pytest tests/ -v || echo "Python 3.11 tests failed"
 
 # Run linting
 lint:
 	@echo "🔍 Running linting..."
-	flake8 src tests --count --select=E9,F63,F7,F82 --show-source --statistics
-	flake8 src tests --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
-	mypy src
-	@echo "✅ Linting complete"
+	flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
+	flake8 src/ tests/ --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
 
 # Format code
 format:
 	@echo "🎨 Formatting code..."
-	black src tests examples
+	black src/ tests/ --target-version py39
 	@echo "✅ Formatting complete"
+
+# Run type checking
+type-check:
+	@echo "🔍 Running type checking..."
+	mypy src/
+	@echo "✅ Type checking complete"
 
 # Show package contents (what will be published)
 show-contents: build
@@ -119,10 +111,31 @@ validate: clean build check show-contents
 	@echo "📦 Ready to publish!"
 
 # Quick development setup
-setup: dev-install
+setup: install-dev
 	@echo "🚀 Development environment ready!"
 	@echo ""
 	@echo "Next steps:"
 	@echo "  make test     # Run tests"
 	@echo "  make build    # Build package"
-	@echo "  make publish-test  # Test publish" 
+	@echo "  make publish-test  # Test publish"
+
+# Run all checks (lint, type-check, test)
+ci: check build
+	@echo "✅ CI pipeline complete"
+
+# Docker development environment targets
+docker-up:
+	@echo "🐳 Starting development environment with Docker..."
+	docker-compose up -d
+
+docker-down:
+	@echo "🐳 Stopping development environment..."
+	docker-compose down
+
+# Development workflow targets
+dev-setup: install-dev
+	@echo "🚀 Development environment ready!"
+	@echo ""
+	@echo "Next steps:"
+	@echo "  make test     # Run tests"
+	@echo "  make docker-up  # Start observability stack" 

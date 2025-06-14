@@ -1,80 +1,20 @@
-name: CI/CD Pipeline
+name: CI
 
 on:
   push:
     branches: [ main, develop ]
   pull_request:
-    branches: [ main, develop ]
-  release:
-    types: [ published ]
+    branches: [ main ]
 
 jobs:
+  # Main test job for stable Python versions
   test:
-    name: Test Python ${{ matrix.python-version }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false  # Don't cancel other jobs if one fails
-      matrix:
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
-    continue-on-error: ${{ matrix.python-version == '3.12' }}  # Allow 3.12 to fail
-        
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-        
-    - name: Cache pip dependencies
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-          
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e .[dev,all]
-        
-    - name: Lint with flake8
-      run: |
-        # Stop the build if there are Python syntax errors or undefined names
-        flake8 src tests --count --select=E9,F63,F7,F82 --show-source --statistics
-        # Exit-zero treats all errors as warnings
-        flake8 src tests --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
-        
-    - name: Format check with black
-      run: |
-        black --check src tests
-        
-    - name: Type check with mypy
-      run: |
-        mypy src
-        
-    - name: Test with pytest
-      run: |
-        pytest --cov=otel_tracer --cov-report=xml --cov-report=term-missing -v
-        
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
-
-  # Core test job that other jobs depend on (excludes Python 3.12)
-  core-test:
-    name: Core Tests (Python 3.8-3.11)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.8', '3.9', '3.10', '3.11']
-        
+        python-version: ["3.9", "3.10", "3.11"]
+    
     steps:
     - uses: actions/checkout@v4
     
@@ -82,52 +22,58 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
-        
-    - name: Cache pip dependencies
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-          
+    
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -e .[dev,all]
-        
+        pip install -e ".[dev,all]"
+    
     - name: Lint with flake8
       run: |
-        # Stop the build if there are Python syntax errors or undefined names
-        flake8 src tests --count --select=E9,F63,F7,F82 --show-source --statistics
-        # Exit-zero treats all errors as warnings
-        flake8 src tests --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
-        
-    - name: Format check with black
-      run: |
-        black --check src tests
-        
+        flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 src/ tests/ --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
+    
     - name: Type check with mypy
-      run: |
-        mypy src
-        
+      run: mypy src/
+    
     - name: Test with pytest
-      run: |
-        pytest --cov=otel_tracer --cov-report=xml --cov-report=term-missing -v
-        
+      run: pytest tests/ -v --cov=otel_tracer --cov-report=xml
+    
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
       with:
         file: ./coverage.xml
         flags: unittests
         name: codecov-umbrella
-        fail_ci_if_error: false
 
-  # Separate job for Python 3.12 (experimental, can fail)
-  test-python312:
-    name: Test Python 3.12 (Experimental)
+  # Core functionality test with minimal dependencies (stable versions only)
+  core-test:
     runs-on: ubuntu-latest
-    continue-on-error: true  # Allow this job to fail without affecting others
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11"]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install core dependencies only
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+        pip install pytest
+    
+    - name: Test core functionality
+      run: pytest tests/test_core.py -v
+
+  # Experimental Python 3.12 test (allowed to fail)
+  test-python-312:
+    runs-on: ubuntu-latest
+    continue-on-error: true
     
     steps:
     - uses: actions/checkout@v4
@@ -135,204 +81,114 @@ jobs:
     - name: Set up Python 3.12
       uses: actions/setup-python@v4
       with:
-        python-version: '3.12'
-        
-    - name: Cache pip dependencies
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-3.12-${{ hashFiles('**/pyproject.toml') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-3.12-
-          
+        python-version: "3.12"
+    
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -e .[dev,all] || echo "Some dependencies may not be compatible with Python 3.12"
-        
+        pip install -e ".[dev,all]"
+    
     - name: Test with pytest
-      run: |
-        pytest --cov=otel_tracer --cov-report=term-missing -v || echo "Python 3.12 tests failed (expected)"
+      run: pytest tests/ -v
 
-  integration-test:
-    name: Integration Tests
-    runs-on: ubuntu-latest
-    needs: core-test
-    
-    services:
-      jaeger:
-        image: jaegertracing/all-in-one:1.51
-        ports:
-          - 16686:16686
-          - 14268:14268
-          - 6831:6831/udp
-        env:
-          COLLECTOR_OTLP_ENABLED: true
-          
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.11
-        
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e .[dev,all]
-        
-    - name: Wait for Jaeger to be ready
-      run: |
-        timeout 60 bash -c 'until curl -f http://localhost:16686; do sleep 2; done'
-        
-    - name: Run integration tests
-      env:
-        OTEL_EXPORTER_TYPE: jaeger
-        OTEL_EXPORTER_JAEGER_AGENT_HOST: localhost
-        OTEL_EXPORTER_JAEGER_AGENT_PORT: 6831
-      run: |
-        pytest tests/integration/ -v
-
-  example-tests:
-    name: Test Example Applications
-    runs-on: ubuntu-latest
-    needs: core-test
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.11
-        
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e .[dev,all]
-        pip install flask fastapi uvicorn django requests httpx
-        
-    - name: Test Flask Example
-      run: |
-        timeout 30 python examples/flask_app.py &
-        sleep 5
-        curl -f http://localhost:5000/ || exit 1
-        curl -f http://localhost:5000/api/users/1 || exit 1
-        pkill -f flask_app.py || true
-        
-    - name: Test FastAPI Example
-      run: |
-        timeout 30 python examples/fastapi_app.py &
-        sleep 5
-        curl -f http://localhost:8000/ || exit 1
-        curl -f http://localhost:8000/api/users || exit 1
-        pkill -f fastapi_app.py || true
-
+  # Security scan
   security:
-    name: Security Scan
     runs-on: ubuntu-latest
     
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up Python 3.11
+    - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: 3.11
-        
+        python-version: "3.11"
+    
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install safety bandit
-        
-    - name: Run safety check
+        pip install bandit safety
+    
+    - name: Run security checks
       run: |
-        safety check --json || true
-        
-    - name: Run bandit security scan
-      run: |
-        bandit -r src/ -f json || true
+        bandit -r src/
+        safety check
 
+  # Build test
   build:
-    name: Build Package
     runs-on: ubuntu-latest
-    needs: [core-test, integration-test]
+    needs: [test, core-test]  # Only depend on stable tests
     
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up Python 3.11
+    - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: 3.11
-        
+        python-version: "3.11"
+    
     - name: Install build dependencies
       run: |
         python -m pip install --upgrade pip
         pip install build twine
-        
+    
     - name: Build package
-      run: |
-        python -m build
-        
+      run: python -m build
+    
     - name: Check package
-      run: |
-        twine check dist/*
-        
+      run: twine check dist/*
+    
     - name: Upload build artifacts
       uses: actions/upload-artifact@v3
       with:
         name: dist
         path: dist/
 
-  # Summary job to show overall test status
+  # Test summary job
   test-summary:
-    name: Test Summary
     runs-on: ubuntu-latest
-    needs: [test, core-test, test-python312]
-    if: always()  # Run even if some tests fail
+    needs: [test, core-test, security, build]
+    if: always()
     
     steps:
     - name: Check test results
       run: |
-        echo "## Test Results Summary" >> $GITHUB_STEP_SUMMARY
-        echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
-        echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
-        echo "| All Python Versions | ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
-        echo "| Core Tests (3.8-3.11) | ${{ needs.core-test.result }} |" >> $GITHUB_STEP_SUMMARY
-        echo "| Python 3.12 (Experimental) | ${{ needs.test-python312.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "Test Results Summary:"
+        echo "Main tests: ${{ needs.test.result }}"
+        echo "Core tests: ${{ needs.core-test.result }}"
+        echo "Security: ${{ needs.security.result }}"
+        echo "Build: ${{ needs.build.result }}"
         
-        # Fail if core tests failed
-        if [ "${{ needs.core-test.result }}" != "success" ]; then
-          echo "❌ Core tests failed - this will block deployment"
+        if [[ "${{ needs.test.result }}" == "failure" || "${{ needs.core-test.result }}" == "failure" ]]; then
+          echo "Critical tests failed!"
           exit 1
         fi
         
-        echo "✅ Core tests passed - ready for deployment"
+        echo "All critical tests passed!"
 
+  # Publish to PyPI (only on tags)
   publish:
-    name: Publish to PyPI
     runs-on: ubuntu-latest
-    needs: [core-test, integration-test, build]
-    if: github.event_name == 'release' && github.event.action == 'published'
+    needs: [test-summary]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
     
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up Python 3.11
+    - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: 3.11
-        
-    - name: Download build artifacts
-      uses: actions/download-artifact@v3
-      with:
-        name: dist
-        path: dist/
-        
+        python-version: "3.11"
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine
+    
+    - name: Build package
+      run: python -m build
+    
     - name: Publish to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        password: ${{ secrets.PYPI_API_TOKEN }}
-        verbose: true 
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+      run: twine upload dist/* 

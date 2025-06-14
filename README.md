@@ -180,7 +180,7 @@ docker run -d --name jaeger \
 ### Using Docker Compose
 ```yaml
 # docker-compose.yml
-version: '3.8'
+version: '3.9'
 services:
   jaeger:
     image: jaegertracing/all-in-one:latest
@@ -492,7 +492,7 @@ Our project uses **GitHub Actions** for automated testing, building, and publish
 ```mermaid
 graph TD
     A[Push Code] --> B[Test All Python Versions]
-    A --> C[Core Tests 3.8-3.11]
+    A --> C[Core Tests 3.9-3.11]
     A --> D[Python 3.12 Experimental]
     
     C --> E[Integration Tests]
@@ -513,7 +513,7 @@ graph TD
 ### 🧪 **Test Jobs Explained**
 
 #### 1. **Main Test Job** (`test`)
-**Purpose**: Tests all Python versions (3.8, 3.9, 3.10, 3.11, 3.12)
+**Purpose**: Tests all Python versions (3.9, 3.10, 3.11, 3.12)
 
 **What happens**:
 ```bash
@@ -535,7 +535,7 @@ pytest --cov=otel_tracer --cov-report=xml -v
 - Uploads coverage reports to Codecov for tracking
 
 #### 2. **Core Test Job** (`core-test`)
-**Purpose**: Tests stable Python versions (3.8-3.11) that deployment depends on
+**Purpose**: Tests stable Python versions (3.9-3.11) that deployment depends on
 
 **Why separate**: Python 3.12 issues won't block your releases
 
@@ -945,7 +945,7 @@ This setup gives you a **production-like observability environment** on your loc
 
 ## 📋 Requirements
 
-- Python 3.8+
+- Python 3.9+
 - OpenTelemetry SDK 1.20.0+
 - Framework-specific dependencies (installed with extras)
 - Docker & Docker Compose (for development environment)

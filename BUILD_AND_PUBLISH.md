@@ -236,7 +236,7 @@ To create a release:
 
 **Build fails:**
 - Ensure all dependencies are installed: `pip install -e .[build]`
-- Check Python version compatibility (3.8+)
+- Check Python version compatibility (3.9+)
 
 **Upload fails:**
 - Verify PyPI credentials are configured correctly
