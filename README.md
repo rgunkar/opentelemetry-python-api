@@ -15,25 +15,25 @@ A **vendor-agnostic** OpenTelemetry tracing library for Python web frameworks in
 
 ### Basic Installation
 ```bash
-pip install otel-web-tracing
+pip install opentelemetry-python-api
 ```
 
 ### Framework-Specific Installation
 ```bash
 # For Flask
-pip install otel-web-tracing[flask]
+pip install opentelemetry-python-api[flask]
 
 # For Django  
-pip install otel-web-tracing[django]
+pip install opentelemetry-python-api[django]
 
 # For FastAPI
-pip install otel-web-tracing[fastapi]
+pip install opentelemetry-python-api[fastapi]
 
 # For all frameworks
-pip install otel-web-tracing[all]
+pip install opentelemetry-python-api[all]
 
 # For development
-pip install otel-web-tracing[dev]
+pip install opentelemetry-python-api[dev]
 ```
 
 ## 🔧 Quick Start
@@ -793,7 +793,7 @@ twine check dist/*
 
 **Coverage Reports**:
 - Automatically uploaded to Codecov
-- View detailed coverage at: `https://codecov.io/gh/rgunkar/otel-web-tracing`
+- View detailed coverage at: `https://codecov.io/gh/rgunkar/opentelemetry-python-api`
 
 ## 🐳 Docker & Development Environment Explained
 
@@ -1048,7 +1048,7 @@ docker-compose up -d --build
    
    # Check Docker network
    docker network ls
-   docker network inspect otel-web-tracing_default
+   docker network inspect opentelemetry-python-api_default
    ```
 
 4. **Reset everything**:
@@ -1092,8 +1092,8 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 🆘 Support
 
-- **Issues**: [GitHub Issues](https://github.com/rgunkar/otel-web-tracing/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/rgunkar/otel-web-tracing/discussions)
-- **Documentation**: [Full Documentation](https://rgunkar.github.io/otel-web-tracing/)
+- **Issues**: [GitHub Issues](https://github.com/rgunkar/opentelemetry-python-api/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/rgunkar/opentelemetry-python-api/discussions)
+- **Documentation**: [Full Documentation](https://rgunkar.github.io/opentelemetry-python-api/)
 
 ## 🌟 Acknowledgments

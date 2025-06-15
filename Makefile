@@ -1,4 +1,4 @@
-# Makefile for otel-web-tracing library
+# Makefile for opentelemetry-python-api library
 # Build and publish commands for PyPI
 
 .PHONY: help install install-dev test test-all lint format type-check clean build publish publish-test docker-up docker-down poetry-install poetry-lock
@@ -40,7 +40,7 @@ publish-test: build ## Publish to TestPyPI
 	poetry config repositories.testpypi https://test.pypi.org/legacy/
 	poetry publish --repository testpypi
 	@echo "✅ Published to TestPyPI"
-	@echo "🔗 Check: https://test.pypi.org/project/otel-web-tracing/"
+	@echo "🔗 Check: https://test.pypi.org/project/opentelemetry-python-api/"
 
 # Publish to PyPI (production)
 publish: build ## Publish to PyPI
@@ -49,7 +49,7 @@ publish: build ## Publish to PyPI
 	@read -p "Are you sure? Type 'yes' to continue: " confirm && [ "$$confirm" = "yes" ]
 	poetry publish
 	@echo "✅ Published to PyPI"
-	@echo "🔗 Check: https://pypi.org/project/otel-web-tracing/"
+	@echo "🔗 Check: https://pypi.org/project/opentelemetry-python-api/"
 
 # Install package in development mode
 install: poetry-install ## Install package in development mode

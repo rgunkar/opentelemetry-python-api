@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Quick Start Guide for otel-web-tracing
+Quick Start Guide for opentelemetry-python-api
 
 This script demonstrates how to quickly get started with each framework.
 Run different examples based on command line arguments.
@@ -164,7 +164,7 @@ def main():
     setup_environment()
     
     if len(sys.argv) < 2:
-        print("🚀 otel-web-tracing Quickstart Guide")
+        print("🚀 opentelemetry-python-api Quickstart Guide")
         print("=" * 50)
         print("Usage: python examples/quickstart.py <framework>")
         print()
@@ -179,7 +179,7 @@ def main():
     
     framework = sys.argv[1].lower()
     
-    print("🚀 otel-web-tracing Quickstart Guide")
+    print("🚀 opentelemetry-python-api Quickstart Guide")
     print("=" * 50)
     print(f"Environment: {os.getenv('OTEL_DEPLOYMENT_ENVIRONMENT')}")
     print(f"Exporter: {os.getenv('OTEL_EXPORTER_TYPE')}")
