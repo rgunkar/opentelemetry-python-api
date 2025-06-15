@@ -1,6 +1,6 @@
-# Building and Publishing otel-web-tracing
+# Building and Publishing opentelemetry-python-api
 
-This guide explains how to build and publish the `otel-web-tracing` library to PyPI.
+This guide explains how to build and publish the `opentelemetry-python-api` library to PyPI.
 
 ## 🎯 What Gets Published
 
@@ -167,7 +167,7 @@ python scripts/build.py validate
 The built package will contain:
 
 ```
-otel-web-tracing-0.1.0/
+opentelemetry-python-api-0.1.0/
 ├── otel_tracer/
 │   ├── __init__.py
 │   ├── tracer.py
@@ -204,7 +204,7 @@ otel-web-tracing-0.1.0/
 
 4. **Test installation from TestPyPI:**
    ```bash
-   pip install -i https://test.pypi.org/simple/ otel-web-tracing
+   pip install -i https://test.pypi.org/simple/ opentelemetry-python-api
    ```
 
 5. **Publish to PyPI:**
@@ -214,7 +214,7 @@ otel-web-tracing-0.1.0/
 
 6. **Test installation from PyPI:**
    ```bash
-   pip install otel-web-tracing
+   pip install opentelemetry-python-api
    ```
 
 ## 🤖 Automated Publishing

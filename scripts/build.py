@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Build script for otel-web-tracing package.
+Build script for opentelemetry-python-api package.
 
 This script automates the build process with proper validation and cleanup.
 Uses Poetry for better dependency resolution and management.
@@ -211,7 +211,7 @@ def show_poetry_info() -> None:
 
 def main() -> None:
     """Main build process."""
-    print("🚀 otel-web-tracing Build Script (Poetry)")
+    print("🚀 opentelemetry-python-api Build Script (Poetry)")
     print("=" * 45)
     
     # Check Python version
